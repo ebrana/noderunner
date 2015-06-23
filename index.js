@@ -3,6 +3,9 @@ var mongojs   = require("mongojs"),
     Immediate = require("./lib/queue/immediate.js"),
     Planned   = require("./lib/queue/planned.js");
 
+// TODO
+// - kontrola spadleho monga + reconnect  
+
 
 // Konfigurace z defaulltu, ENV, CLI a souboru
 nconf.argv().env().file({file: 'config.json'});
