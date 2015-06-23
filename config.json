@@ -1,0 +1,16 @@
+{
+	"mongoDSN":"",
+	"immediate":{
+		"interval": 4500,
+		"maxThreadsCount": 3
+	},
+	"history":{
+		"interval":120000
+	},
+	"statusAlias":{
+		"planned": "planed2",
+		"running": "running2",
+		"success": "success2",
+		"error":   "error2"
+	}
+}

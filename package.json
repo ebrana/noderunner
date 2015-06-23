@@ -1,0 +1,24 @@
+{
+  "name": "queuerunner-node",
+  "version": "1.0.0",
+  "description": "Daemon for background runnings jobs from Mongo queues (immediate, planned, history)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "cron-parser": "^0.6.2",
+    "mongojs": "^0.13.0",
+    "nconf": "^0.7.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dvorakjan/queuerunner-node.git"
+  },
+  "author": "Jan Dvorak",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dvorakjan/queuerunner-node/issues"
+  },
+  "homepage": "https://github.com/dvorakjan/queuerunner-node"
+}
