@@ -8,8 +8,9 @@
   },
   "dependencies": {
     "cron-parser": "^0.6.2",
-    "mongojs": "^0.13.0",
-    "nconf": "^0.7.1"
+    "mongodb": "^2.0.35",
+    "nconf": "^0.7.1",
+    "winston": "^1.0.0"
   },
   "repository": {
     "type": "git",
