@@ -1,17 +1,24 @@
-var mongojs   = require("mongojs"),
-	nconf     = require('nconf'),
-    Immediate = require("./lib/queue/immediate.js"),
-    Planned   = require("./lib/queue/planned.js");
+var MongoClient = require('mongodb').MongoClient,
+    nconf       = require('nconf'),
+    logger      = require('./lib/logger'),
+    Immediate   = require("./lib/queue/immediate"),
+    Planned     = require("./lib/queue/planned")
+    History     = require("./lib/queue/history");
 
-// TODO
-// - kontrola spadleho monga + reconnect  
+// Config from ENV, CLI, default file and local file
+nconf.argv().env().file('custom', {file: 'config/custom.json'}).file({file: 'config/defaults.json'});
 
-
-// Konfigurace z defaulltu, ENV, CLI a souboru
-nconf.argv().env().file({file: 'config.json'});
-
-var db = mongojs.connect(nconf.get('mongoDSN'), ['immediate','planned','history']);
-
-// Spustit jednotlive fronty
-new Immediate(db, nconf).run(); 
-new Planned(db, nconf).run();
+// Kontrola pripojeni k mongu
+(function tryMongoConnection() {
+    MongoClient.connect(nconf.get('mongoDSN'), function(err, db){
+        if (err) {
+            logger.error('Mongo connection error, try in 10 secs. ', err);
+            setTimeout(tryMongoConnection, 3000)
+        } else {
+            // Spustit jednotlive fronty
+            new Immediate(db, nconf, logger).run();
+            new Planned(db, nconf, logger).run();
+            new History(db, nconf, logger).run();
+        }
+    });
+}())
