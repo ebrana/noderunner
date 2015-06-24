@@ -2,11 +2,12 @@
 	"mongoDSN":"mongodb://localhost:27017/queuerunner",
     "logLevel":"info",
 	"immediate":{
-		"interval": 4500,
+		"interval": 5000,
 		"maxThreadsCount": 3
 	},
 	"history":{
-		"interval":120000
+		"interval":30000,
+        "maxAge":120000
 	},
     "watchdog":{
       "interval":60000,
@@ -18,6 +19,7 @@
     },
 	"statusAlias":{
 		"planned": "planed2",
+        "fetched": "fetched2",
 		"running": "running2",
 		"success": "success2",
 		"error":   "error2"
