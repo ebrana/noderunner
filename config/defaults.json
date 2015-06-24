@@ -8,6 +8,14 @@
 	"history":{
 		"interval":120000
 	},
+    "watchdog":{
+      "interval":60000,
+      "badSamplesLimit":30,
+      "email": {
+        "from": "noderunner@ebrana.cz",
+        "to": "dvorak@ebrana.cz"
+      }
+    },
 	"statusAlias":{
 		"planned": "planed2",
 		"running": "running2",

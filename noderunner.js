@@ -1,8 +1,9 @@
 var MongoClient = require('mongodb').MongoClient,
     nconf       = require('nconf'),
-    Immediate   = require("./lib/queue/immediate"),
-    Planned     = require("./lib/queue/planned")
-    History     = require("./lib/queue/history");
+    Immediate   = require('./lib/queue/immediate'),
+    Planned     = require('./lib/queue/planned')
+    History     = require('./lib/queue/history')
+    Watchdog    = require('./lib/watchdog');
 
 // Config from ENV, CLI, default file and local file
 nconf.argv().env().file('custom', {file: 'config/custom.json'}).file({file: 'config/defaults.json'}).defaults({'logLevel':'error'});
@@ -22,6 +23,7 @@ var logger = require('./lib/logger')(nconf.get('logLevel'));
             new Immediate(db, nconf, logger).run();
             new Planned(db, nconf, logger).run();
             new History(db, nconf, logger).run();
+            new Watchdog(db, nconf, logger).run();
         }
     });
 }())
