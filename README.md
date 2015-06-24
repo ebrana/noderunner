@@ -1,4 +1,4 @@
-# queuerunner-node
+# noderunner
 
 Node.js daemon service for background running jobs from queuerunner MongoDB queue. 
 
@@ -7,12 +7,12 @@ Node.js daemon service for background running jobs from queuerunner MongoDB queu
 ```bashp
 npm install -g forever 
 
-git clone https://github.com/dvorakjan/queuerunner-node.git /opt/queuerunner-node
-cd /opt/queuerunner-node
+git clone https://github.com/dvorakjan/noderunner.git /opt/noderunner
+cd /opt/noderunner
 
-ln -s /opt/queuerunner-node/bin/initScript.sh /etc/init.d/queuerunner-node
-chmod +x /etc/init.d/queuerunner-node
-update-rc.d queuerunner-node defaults
+ln -s /opt/noderunner/bin/initScript.sh /etc/init.d/noderunner
+chmod +x /etc/init.d/noderunner
+update-rc.d noderunner defaults
 ```
 ## Configuration
 Default config file ``config/defaults.json`` is possible to override with ``config/custom.json`` file.

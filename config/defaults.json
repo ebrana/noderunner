@@ -12,8 +12,5 @@
 		"running": "running2",
 		"success": "success2",
 		"error":   "error2"
-	},
-    "debug":{
-      "threadNames":["Jiří","Petr","Pavel","Jaroslav","Martin","Tomáš","Miroslav","František","Josef","Štěpán","Štepán","Václav","Michal","Karel","Milan","Vladimír","David","Jakub","Lukáš","Ladislav","Stanislav","Roman","Ondřej","Radek","Marek","Daniel","Miloslav","Vojtěch","Filip","Jaromír","Ivan","Aleš","Oldřich","Libor","Rudolf"]
-    }
+	}
 }

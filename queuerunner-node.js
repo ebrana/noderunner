@@ -11,6 +11,7 @@ nconf.argv().env().file('custom', {file: 'config/custom.json'}).file({file: 'con
 // Kontrola pripojeni k mongu
 (function tryMongoConnection() {
     MongoClient.connect(nconf.get('mongoDSN'), function(err, db){
+        logger.info('Connected to mongo queuerunner DB');
         if (err) {
             logger.error('Mongo connection error, try in 10 secs. ', err);
             setTimeout(tryMongoConnection, 3000)

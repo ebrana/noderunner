@@ -1,2 +1,2 @@
 #!/bin/sh
-node queuerunner-node.js
+node noderunner.js

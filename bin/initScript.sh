@@ -7,15 +7,15 @@ case "$1" in
   start)
   cd $(dirname `readlink -f $0 || realpath $0`)
   cd ..
-  mkdir -p /var/log/queuerunner-node
-  forever stop queuerunner-node.js > /dev/null 2>&1
-  forever start -a -p . --minUptime 1000 --spinSleepTime 100 -o /var/log/queuerunner-node/output.log -e /var/log/queuerunner-node/error.log -l /var/log/queuerunner-node/forever.log --pidFile ./forever.pid -w --watchIgnore "logs/*" queuerunner-node.js
+  mkdir -p /var/log/noderunner
+  forever stop noderunner.js > /dev/null 2>&1
+  forever start -a -p . --minUptime 1000 --spinSleepTime 100 -o /var/log/noderunner/output.log -e /var/log/noderunner/error.log -l /var/log/noderunner/forever.log --pidFile ./forever.pid -w --watchIgnore "logs/*" noderunner.js
   ;;
 stop)
-  exec forever stop queuerunner-node.js
+  exec forever stop noderunner.js
   ;;
 *)
-  echo "Usage: /etc/init.d/queuerunner-node {start|stop}"
+  echo "Usage: /etc/init.d/noderunner {start|stop}"
   exit 1
   ;;
 esac
