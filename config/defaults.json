@@ -1,5 +1,6 @@
 {
 	"mongoDSN":"mongodb://localhost:27017/queuerunner",
+    "logLevel":"info",
 	"immediate":{
 		"interval": 4500,
 		"maxThreadsCount": 3

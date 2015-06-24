@@ -1,12 +1,14 @@
 var MongoClient = require('mongodb').MongoClient,
     nconf       = require('nconf'),
-    logger      = require('./lib/logger'),
     Immediate   = require("./lib/queue/immediate"),
     Planned     = require("./lib/queue/planned")
     History     = require("./lib/queue/history");
 
 // Config from ENV, CLI, default file and local file
-nconf.argv().env().file('custom', {file: 'config/custom.json'}).file({file: 'config/defaults.json'});
+nconf.argv().env().file('custom', {file: 'config/custom.json'}).file({file: 'config/defaults.json'}).defaults({'logLevel':'error'});
+
+// Init logger
+var logger = require('./lib/logger')(nconf.get('logLevel'));
 
 // Kontrola pripojeni k mongu
 (function tryMongoConnection() {
