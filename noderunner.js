@@ -11,7 +11,9 @@ nconf.argv().env().file('custom', {file: 'config/custom.json'}).file({file: 'con
 // Init logger
 var logger = require('./lib/logger')(nconf.get('logLevel'));
 
-// Kontrola pripojeni k mongu
+var immediate, planned, history, watchdog;
+
+// Mongo connection check
 (function tryMongoConnection() {
     MongoClient.connect(nconf.get('mongoDSN'), function(err, db){
         logger.info('Connected to mongo queuerunner DB');
@@ -19,11 +21,29 @@ var logger = require('./lib/logger')(nconf.get('logLevel'));
             logger.error('Mongo connection error, try in 10 secs. ', err);
             setTimeout(tryMongoConnection, 3000)
         } else {
-            // Spustit jednotlive fronty
-            new Immediate(db, nconf, logger).run();
-            new Planned(db, nconf, logger).run();
-            new History(db, nconf, logger).run();
-            new Watchdog(db, nconf, logger).run();
+            immediate = new Immediate(db, nconf, logger).run();
+            planned   = new Planned(db, nconf, logger).run();
+            history   = new History(db, nconf, logger).run();
+            watchdog  = new Watchdog(db, nconf, logger).run();
         }
     });
 }())
+
+// Graceful restart handler
+process.on( "SIGABRT", function() {
+    var timeout = nconf.get('gracefulShutdownTimeout');
+    logger.warn('SHUTDOWN: Graceful shutdown request detected. Stop queues and wait for '+timeout/1000+' seconds.');
+
+    planned.stop();
+    history.stop();
+    watchdog.stop();
+    immediate.stop(function(){
+        logger.warn('SHUTDOWN: Last thread finished. Exitting now...');
+        process.exit();
+    });
+
+    setTimeout(function() {
+        logger.warn('SHUTDOWN: Graceful shutdown timeout exceeded. Exitting now...');
+        process.exit();
+    }, timeout);
+});

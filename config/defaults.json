@@ -27,5 +27,6 @@
     "running": "running",
     "success": "success",
     "error": "error"
-  }
+  },
+  "gracefulShutdownTimeout": 30000
 }
