@@ -18,10 +18,10 @@
     }
   },
   "statusAlias": {
-    "planned": "planed2",
-    "fetched": "fetched2",
-    "running": "running2",
-    "success": "success2",
-    "error": "error2"
+    "planned": "planed",
+    "fetched": "fetched",
+    "running": "running",
+    "success": "success",
+    "error": "error"
   }
 }
