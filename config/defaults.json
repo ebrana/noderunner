@@ -1,6 +1,10 @@
 {
   "mongoDSN": "mongodb://localhost:27017/queuerunner",
   "logLevel": "info",
+  "sudo": {
+    "user": "nginx",
+    "group": "nginx"
+  },
   "immediate": {
     "interval": 5000,
     "maxThreadsCount": 3
