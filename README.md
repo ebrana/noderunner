@@ -3,7 +3,8 @@
 Node.js daemon service for background running jobs from queuerunner MongoDB queue. It can/should be used with [dvorakjan/QueueRunner](https://github.com/dvorakjan/QueueRunner) (QueueManager sublibrary respectively) originally created by [vojtabiberle](https://github.com/dvorakjan) as a backend for job creation and management.
 
 ## Architecture
-  * Daemon is composed by four separate modules. Three of them are corresponding to queuerunner queuees.
+Daemon is composed by four separate modules. Three of them are corresponding to queuerunner queuees. Activity diagram of service function can be found [here](docs/modules-activity.png).
+  
   * ``Immediate`` is fetching jobs from queue of same name and executes them. Command is composed as follows: ``sudo -u $user -g $group nice -n $nice $interpreter $basePath/$executable $args``. Status ``running`` is set to job during execution and ``error`` or ``success`` when complete. Stderr and stdout of proccess is continuously saved to ``error`` and ``output`` fields of job in queue.
   * ``Planned`` is checking every minute all jobs in ``planned`` queue. If any of has ``schedule`` field (in CRON syntax) which is matching actual time, it is copied to ``immediate`` queue with new ID.
   * ``History`` is contiunously checking ``immediate`` queue and moves jobs with field ``finished`` (timestamp created when status changed to success or error) older than certain value (one minute by default) to ``history`` queue.
@@ -35,8 +36,8 @@ Default config file ``config/defaults.json`` is possible to override by ``config
     "maxAge": 60000					// num of millis from job finish before its move to history queue
   },
   "watchdog": {
-    "interval": 60000,				// frequency of check in millis
-    "badSamplesLimit": 30,			// number of consecutive samples before warning is send
+    "interval": 360000,				// frequency of check in millis (every 6 minutes)
+    "badSamplesLimit": 15,			// number of consecutive samples before warning is send (1.5 hour)
     "email": {
       "from": "noderunner@ebrana.cz",
       "to": "dvorak@ebrana.cz"
