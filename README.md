@@ -16,6 +16,7 @@ npm install -g forever
 
 git clone https://github.com/dvorakjan/noderunner.git /opt/noderunner
 cd /opt/noderunner
+npm install
 
 ln -s /opt/noderunner/bin/initScript.sh /etc/init.d/noderunner
 chmod +x /etc/init.d/noderunner
