@@ -16,6 +16,11 @@ stop)
   cd ..
   exec forever stop noderunner.js
   ;;
+restart)
+  cd $(dirname `readlink -f $0 || realpath $0`)
+  cd ..
+  exec forever restart noderunner.js
+  ;;
 *)
   echo "Usage: /etc/init.d/noderunner {start|stop}"
   exit 1
