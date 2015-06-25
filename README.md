@@ -22,6 +22,11 @@ ln -s /opt/noderunner/bin/initScript.sh /etc/init.d/noderunner
 chmod +x /etc/init.d/noderunner
 update-rc.d noderunner defaults
 ```
+## Debugging
+  * During development, ``bin/dev.sh`` script runs noderunner using ``nodemon`` for automatic reloading based on filechange. 
+  * All logs are located in ``/var/log/noderunner``
+  * Manual restart of service using ``service noderunner restart`` will try to gracefully let threads finish first. Timeout for force restart can be set using ``gracefulShutdownTimeout``.
+
 ## Configuration
 Default config file ``config/defaults.json`` is possible to override by ``config/custom.json`` file.
 ```javascript
