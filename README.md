@@ -27,7 +27,11 @@ Default config file ``config/defaults.json`` is possible to override by ``config
 ```javascript
 {
   "mongoDSN": "mongodb://localhost:27017/db",	
-  "logLevel": "info", 				
+  "logLevel": "info", 
+  "sudo": {
+    "user": "nginx",
+    "group": "nginx"
+  },
   "immediate": {
     "interval": 5000,				// num of millis to wait when nothing to do
     "maxThreadsCount": 3			// num of allowed parallel proccesses 
