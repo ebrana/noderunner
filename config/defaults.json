@@ -1,27 +1,27 @@
 {
-	"mongoDSN":"mongodb://localhost:27017/queuerunner",
-    "logLevel":"info",
-	"immediate":{
-		"interval": 5000,
-		"maxThreadsCount": 3
-	},
-	"history":{
-		"interval":30000,
-        "maxAge":120000
-	},
-    "watchdog":{
-      "interval":60000,
-      "badSamplesLimit":30,
-      "email": {
-        "from": "noderunner@ebrana.cz",
-        "to": "dvorak@ebrana.cz"
-      }
-    },
-	"statusAlias":{
-		"planned": "planed2",
-        "fetched": "fetched2",
-		"running": "running2",
-		"success": "success2",
-		"error":   "error2"
-	}
+  "mongoDSN": "mongodb://localhost:27017/queuerunner",
+  "logLevel": "info",
+  "immediate": {
+    "interval": 5000,
+    "maxThreadsCount": 3
+  },
+  "history": {
+    "interval": 30000,
+    "maxAge": 60000
+  },
+  "watchdog": {
+    "interval": 360000,
+    "badSamplesLimit": 15,
+    "email": {
+      "from": "noderunner@ebrana.cz",
+      "to": "dvorak@ebrana.cz"
+    }
+  },
+  "statusAlias": {
+    "planned": "planed2",
+    "fetched": "fetched2",
+    "running": "running2",
+    "success": "success2",
+    "error": "error2"
+  }
 }
