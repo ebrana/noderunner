@@ -21,7 +21,7 @@ chmod +x /etc/init.d/noderunner
 update-rc.d noderunner defaults
 ```
 ## Configuration
-Default config file ``config/defaults.json`` is possible to override with ``config/custom.json`` file.
+Default config file ``config/defaults.json`` is possible to override by ``config/custom.json`` file.
 ```javascript
 {
   "mongoDSN": "mongodb://localhost:27017/db",	
