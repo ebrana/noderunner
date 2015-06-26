@@ -20,6 +20,7 @@ npm install
 
 ln -s /opt/noderunner/bin/initScript.sh /etc/init.d/noderunner
 chmod +x /etc/init.d/noderunner
+
 # Ubuntu
 update-rc.d noderunner defaults
 
