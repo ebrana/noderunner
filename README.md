@@ -20,7 +20,12 @@ npm install
 
 ln -s /opt/noderunner/bin/initScript.sh /etc/init.d/noderunner
 chmod +x /etc/init.d/noderunner
+
+# Ubuntu
 update-rc.d noderunner defaults
+
+# CentOS
+chkconfig --add noderunner
 ```
 ## Debugging
   * During development, ``bin/dev.sh`` script runs noderunner using ``nodemon`` for automatic reloading based on filechange. 
