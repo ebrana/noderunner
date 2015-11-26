@@ -9,6 +9,9 @@
     "interval": 5000,
     "maxThreadsCount": 3
   },
+  "gui": {
+    "batchTimeout": 800
+  },
   "history": {
     "interval": 30000,
     "maxAge": 60000,
