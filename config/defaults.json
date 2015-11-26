@@ -10,7 +10,7 @@
     "maxThreadsCount": 3
   },
   "gui": {
-    "batchTimeout": 800
+    "batchTimeout": 500
   },
   "history": {
     "interval": 30000,
