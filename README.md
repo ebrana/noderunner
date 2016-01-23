@@ -1,6 +1,6 @@
 # noderunner
 
-Node.js daemon service for background running jobs from queuerunner MongoDB queue. It can/should be used with [dvorakjan/QueueRunner](https://github.com/dvorakjan/QueueRunner) (QueueManager sublibrary respectively) originally created by [vojtabiberle](https://github.com/dvorakjan) as a backend for job creation and management.
+Node.js daemon service for background running jobs from queuerunner MongoDB queue. It can/should be used with [dvorakjan/QueueRunner](https://github.com/dvorakjan/QueueRunner) (QueueManager sublibrary respectively) originally created by [vojtabiberle](https://github.com/vojtabiberle) as a backend for job creation and management.
 
 ## Architecture
 Daemon is composed by four separate modules. Three of them are corresponding to queuerunner queuees. Activity diagram of service function can be found [here](docs/modules-activity.png).
