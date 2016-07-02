@@ -26,7 +26,7 @@ var immediate, planned, history, watchdog, gui;
             immediate = new Immediate(db, nconf, logger).run();
             planned   = new Planned(db, nconf, logger).run();
             history   = new History(db, nconf, logger).run();
-            watchdog  = new Watchdog(db, nconf, logger).run();
+            watchdog  = new Watchdog(db, nconf, logger).run(immediate);
             gui       = new Gui(db, nconf, logger, {
                             immediate: immediate,
                             planned:   planned,
