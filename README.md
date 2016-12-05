@@ -14,12 +14,14 @@ Daemon is composed by four separate modules. Three of them are corresponding to 
 ```bashp
 npm install -g forever 
 
-git clone https://github.com/dvorakjan/noderunner.git /opt/noderunner
-cd /opt/noderunner
+git clone https://github.com/dvorakjan/noderunner.git /home/noderunner
+cd /home/noderunner
 npm install
 
-ln -s /opt/noderunner/bin/initScript.sh /etc/init.d/noderunner
+cp /home/noderunner/bin/initScript.sh /etc/init.d/noderunner
 chmod +x /etc/init.d/noderunner
+# modify NR_* variables in /etc/init.d/noderunner
+# mkdir "NR_LOGS" when "NR_USER" can't write to NR_LOGS/..
 
 # Ubuntu
 update-rc.d noderunner defaults
@@ -29,7 +31,7 @@ chkconfig --add noderunner
 ```
 ## Debugging
   * During development, ``bin/dev.sh`` script runs noderunner using ``nodemon`` for automatic reloading based on filechange. 
-  * All logs are located in ``/var/log/noderunner``
+  * Control daemon using init script ``service noderunner start|stop|restart|status|log``
   * Manual restart of service using ``service noderunner restart`` will try to gracefully let threads finish first. Timeout for force restart can be set using ``gracefulShutdownTimeout``.
 
 ## Configuration
