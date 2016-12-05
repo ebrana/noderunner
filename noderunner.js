@@ -77,8 +77,12 @@ process.on( "SIGABRT", function() {
     history.stop();
     watchdog.stop();
     immediate.stop(function(){
-        logger.warn('SHUTDOWN: Last thread finished. Exitting now...');
-        process.exit();
+        logger.warn('SHUTDOWN: Last thread finished. Exitting in 3 secs...');
+
+        // if some db query running, give it some time to finish
+        setTimeout(function(){
+            process.exit();
+        }, 3000);
     });
 
     setTimeout(function() {
