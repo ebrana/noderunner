@@ -10,6 +10,7 @@
     "maxThreadsCount": 3
   },
   "gui": {
+    "enable": false,
     "batchTimeout": 500
   },
   "history": {
