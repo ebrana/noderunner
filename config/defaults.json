@@ -20,6 +20,7 @@
   },
   "watchdog": {
     "interval": 360000,
+    "loadCheckInterval": 30000,
     "badSamplesLimit": 15,
     "email": {
       "from": "noderunner@ebrana.cz",
