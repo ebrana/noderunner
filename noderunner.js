@@ -37,8 +37,8 @@ function tryMongoConnection() {
                 gui       = new Gui(db, nconf, logger, {
                     immediate: immediate,
                     planned:   planned,
-                    history:   history
-                }).run();
+                    history:   history,
+                }, watchdog).run();
             }
         }
     });
