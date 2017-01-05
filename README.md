@@ -12,22 +12,25 @@ Daemon is composed by four separate modules. Three of them are corresponding to 
 
 ## Installation
 ```bashp
-npm install -g forever 
-
 git clone https://github.com/dvorakjan/noderunner.git /home/noderunner
 cd /home/noderunner
 npm install
 
+# Systemd
+cp /home/noderunner/bin/noderunner.service /etc/systemd/system/noderunner.service
+systemctl daemon-reload
+systemctl enable noderunner
+systemctl start noderunner
+
+# SysVInit
 cp /home/noderunner/bin/initScript.sh /etc/init.d/noderunner
 chmod +x /etc/init.d/noderunner
 # modify NR_* variables in /etc/init.d/noderunner
 # mkdir "NR_LOGS" when "NR_USER" can't write to NR_LOGS/..
 
-# Ubuntu
-update-rc.d noderunner defaults
-
-# CentOS
-chkconfig --add noderunner
+npm install -g forever
+update-rc.d noderunner defaults # Ubuntu
+chkconfig --add noderunner # CentOS
 ```
 ## Debugging
   * During development, ``bin/dev.sh`` script runs noderunner using ``nodemon`` for automatic reloading based on filechange. 
