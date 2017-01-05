@@ -4,7 +4,11 @@
   "description": "Daemon for background runnings jobs from Mongo queues (immediate, planned, history)",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "install": "useradd noderunner && mkdir -p /var/log/noderunner && chown -R noderunner /var/log/noderunner"
+  },
+  "config": {
+    "unsafe-perm":true
   },
   "dependencies": {
     "cron-parser": "^0.6.2",
