@@ -5,7 +5,7 @@ Description=Daemon for running jobs from Mongo queue
 ExecStart=/usr/bin/node noderunner.js
 WorkingDirectory=/home/noderunner
 Restart=always
-RestartSec=500ms
+RestartSec=5
 StartLimitInterval=0
 Environment=ENV=production
 User=nginx
