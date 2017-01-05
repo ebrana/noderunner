@@ -23,14 +23,13 @@ systemctl enable noderunner
 systemctl start noderunner
 
 # SysVInit
+npm install -g forever
 cp /home/noderunner/bin/initScript.sh /etc/init.d/noderunner
 chmod +x /etc/init.d/noderunner
 # modify NR_* variables in /etc/init.d/noderunner
 # mkdir "NR_LOGS" when "NR_USER" can't write to NR_LOGS/..
-
-npm install -g forever
 update-rc.d noderunner defaults # Ubuntu
-chkconfig --add noderunner # CentOS
+chkconfig --add noderunner      # CentOS
 ```
 ## Debugging
   * During development, ``bin/dev.sh`` script runs noderunner using ``nodemon`` for automatic reloading based on filechange. 
