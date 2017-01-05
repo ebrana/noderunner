@@ -1,14 +1,17 @@
 [Unit]
-Description=This is an empty tiny app for testing the nodejs deployment agent
+Description=Daemon for running jobs from Mongo queue
 
 [Service]
-StandardOutput=syslog
-SyslogIdentifier=simple-empty-app
-Type=forking
-Environment=ENV=production
-Environment=PATH=/usr/bin:/usr/local/bin
+ExecStart=/usr/bin/node noderunner.js
 WorkingDirectory=/home/noderunner
-ExecStart=/usr/bin/forever start -a -p . --killSignal=SIGABRT --minUptime 1000 --spinSleepTime 100 -e /var/log/noderunner/error.log -l /var/log/noderunner/forever.log --pidFile ./forever.pid noderunner.js
-ExecStop=/usr/bin/forever stop noderunner.js
-PIDFile=/var/run/simple-empty-app.pid
-User=root
+Restart=always
+RestartSec=500ms
+StartLimitInterval=0
+Environment=ENV=production
+User=nginx
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=noderunner
+
+[Install]
+WantedBy=multi-user.target
