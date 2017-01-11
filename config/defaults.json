@@ -11,7 +11,8 @@
   },
   "gui": {
     "enable": false,
-    "batchTimeout": 500
+    "batchTimeout": 500,
+    "threadsStatsLength": 18000000
   },
   "history": {
     "interval": 30000,
