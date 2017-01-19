@@ -14,6 +14,9 @@
     "batchTimeout": 500,
     "threadsStatsLength": 18000000
   },
+  "planned": {
+    "interval": 20000
+  },
   "history": {
     "interval": 30000,
     "maxAge": 60000,
