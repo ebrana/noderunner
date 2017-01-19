@@ -7,9 +7,10 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "config": {
-    "unsafe-perm":true
+    "unsafe-perm": true
   },
   "dependencies": {
+    "chance": "^1.0.4",
     "cron-parser": "^0.6.2",
     "express": "^4.13.3",
     "lodash": "^4.17.2",
