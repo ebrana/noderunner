@@ -4,9 +4,13 @@ Description=Daemon for running jobs from Mongo queue
 [Service]
 ExecStart=/usr/bin/node noderunner.js
 WorkingDirectory=/home/noderunner
+
+# try to restart service 5 times with 20s delay, then fail
 Restart=always
-RestartSec=5
-StartLimitInterval=0
+RestartSec=20
+StartLimitBurst=5
+StartLimitInterval=150
+
 Environment=ENV=production
 User=nginx
 StandardOutput=syslog
