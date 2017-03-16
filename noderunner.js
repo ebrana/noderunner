@@ -7,7 +7,7 @@ var MongoClient = require('mongodb').MongoClient,
     Watchdog    = require('./lib/watchdog');
 
 // Config from ENV, CLI, default file and local file
-nconf.argv().env().file('custom', {file: 'config/custom.json'}).file({file: 'config/defaults.json'}).defaults({'logLevel':'error'});
+nconf.argv().env().file('custom', {file: 'custom/config.json'}).file({file: 'defaults.json'}).defaults({'logLevel':'error'});
 
 // Init logger
 var logger = require('./lib/logger')(nconf.get('logLevel'));
