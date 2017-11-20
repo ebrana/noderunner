@@ -7,6 +7,7 @@
   },
   "immediate": {
     "interval": 5000,
+    "removeStuckedJobsInterval": 600000,
     "maxThreadsCount": 3
   },
   "gui": {
