@@ -39,7 +39,7 @@ chkconfig --add noderunner      # CentOS
 
 ## Configuration
 Default config file ``config/defaults.json`` is possible to override by ``config/custom.json`` file.
-```json
+```javascript
 {
   "mongoDSN": "mongodb://localhost:27017/db",	
   "logLevel": "info", 
