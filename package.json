@@ -4,6 +4,8 @@
   "description": "Daemon for background runnings jobs from Mongo queues (immediate, planned, history)",
   "main": "index.js",
   "scripts": {
+    "start": "nodemon",
+    "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "config": {
@@ -31,5 +33,11 @@
   "bugs": {
     "url": "https://github.com/dvorakjan/noderunner/issues"
   },
-  "homepage": "https://github.com/dvorakjan/noderunner"
+  "homepage": "https://github.com/dvorakjan/noderunner",
+  "devDependencies": {
+    "nodemon": "^1.18.7",
+    "prettier": "1.15.3",
+    "ts-node": "^7.0.1",
+    "typescript": "^3.2.1"
+  }
 }

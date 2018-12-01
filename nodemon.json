@@ -1,0 +1,6 @@
+{
+  "watch": ["lib"],
+  "ext": "ts,js",
+  "ignore": ["lib/**/*.spec.ts"],
+  "exec": "ts-node ./noderunner.js"
+}
