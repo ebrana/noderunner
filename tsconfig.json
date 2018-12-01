@@ -3,7 +3,8 @@
     "outDir": "./built",
     "allowJs": true,
     "target": "es5",
-    "lib": ["es5"]
+    "lib": ["es5"],
+    "sourceMap": true
   },
   "include": ["./*.ts", "./lib/**/*"]
 }
