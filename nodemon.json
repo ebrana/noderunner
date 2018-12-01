@@ -1,6 +1,6 @@
 {
-  "watch": ["lib", "*.ts"],
+  "watch": ["src", "*.ts"],
   "ext": "ts",
-  "ignore": ["lib/**/*.spec.ts"],
+  "ignore": ["src/**/*.spec.ts"],
   "exec": "ts-node ./noderunner.ts"
 }

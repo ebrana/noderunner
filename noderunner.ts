@@ -1,10 +1,10 @@
 let MongoClient = require('mongodb').MongoClient,
   nconf = require('nconf'),
-  ImmediateQueue = require('./lib/queue/immediate'),
-  PlannedQueue = require('./lib/queue/planned'),
-  HistoryQueue = require('./lib/queue/history'),
-  Gui = require('./lib/gui'),
-  Watchdog = require('./lib/watchdog')
+  ImmediateQueue = require('./src/queue/immediate'),
+  PlannedQueue = require('./src/queue/planned'),
+  HistoryQueue = require('./src/queue/history'),
+  Gui = require('./src/gui'),
+  Watchdog = require('./src/watchdog')
 
 // Config from ENV, CLI, default file and local file
 nconf
@@ -15,7 +15,7 @@ nconf
   .defaults({ logLevel: 'error' })
 
 // Init logger
-var logger = require('./lib/logger')(nconf.get('logLevel'))
+var logger = require('./src/logger')(nconf.get('logLevel'))
 
 var immediate, planned, history, watchdog, gui
 
