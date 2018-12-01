@@ -1,8 +1,8 @@
-exports = module.exports = Gui
+exports = module.exports = GuiClass
 
 var _ = require('lodash')
 
-function Gui(db, nconf, logger, queues, watchdog) {
+function GuiClass(db, nconf, logger, queues, watchdog) {
   this.db = db
   this.nconf = nconf
   this.logger = logger
@@ -13,7 +13,7 @@ function Gui(db, nconf, logger, queues, watchdog) {
   this.timeoutsOnEndTime = {}
 }
 
-Gui.prototype._initSocket = function() {
+GuiClass.prototype._initSocket = function() {
   var express = require('express')
   var app = express()
   var listener = app.listen(8001)
@@ -21,7 +21,7 @@ Gui.prototype._initSocket = function() {
   return require('socket.io')(listener)
 }
 
-Gui.prototype.run = function() {
+GuiClass.prototype.run = function() {
   var self = this
   self.io = self._initSocket()
 
@@ -117,7 +117,7 @@ Gui.prototype.run = function() {
   return this
 }
 
-Gui.prototype.updateWaitingCount = _.debounce(function() {
+GuiClass.prototype.updateWaitingCount = _.debounce(function() {
   var self = this
   if (self.io.sockets.sockets.length > 0) {
     console.log('THROTTLED updateWaitingCount')
@@ -127,7 +127,7 @@ Gui.prototype.updateWaitingCount = _.debounce(function() {
   }
 }, 3000)
 
-Gui.prototype.updateRunningList = function(socket) {
+GuiClass.prototype.updateRunningList = function(socket) {
   var self = this
 
   self.queues.immediate.getJobs(
@@ -143,7 +143,7 @@ Gui.prototype.updateRunningList = function(socket) {
   )
 }
 
-Gui.prototype.updateQueue = function(queueName, filter, socket) {
+GuiClass.prototype.updateQueue = function(queueName, filter, socket) {
   var self = this
 
   if (typeof filter.host != 'undefined') {
@@ -202,17 +202,17 @@ Gui.prototype.updateQueue = function(queueName, filter, socket) {
   }, filter)
 }
 
-Gui.prototype.emitToAll = function(action, params) {
+GuiClass.prototype.emitToAll = function(action, params) {
   this.logger.debug('GUI: emitToAll event ' + action)
   this.io.emit(action, params)
 }
 
-Gui.prototype.emit = function(socket, action, params, logDetails) {
+GuiClass.prototype.emit = function(socket, action, params, logDetails) {
   this.logger.debug('GUI: emit event ' + action, logDetails ? logDetails : '')
   socket.emit(action, params)
 }
 
-Gui.prototype.stop = function() {
+GuiClass.prototype.stop = function() {
   this.io.close()
   this.logger.info('GUI: stopped')
 }

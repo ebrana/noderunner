@@ -1,16 +1,16 @@
-exports = module.exports = Job
+exports = module.exports = JobClass
 
 var parser = require('cron-parser')
 var chance = require('chance')
 
-function Job(queue) {
+function JobClass(queue) {
   this.db = queue.db
   this.nconf = queue.nconf
   this.logger = queue.logger
   this.queue = queue
 }
 
-Job.prototype.run = function(callback, fallback, onStatusSaved) {
+JobClass.prototype.run = function(callback, fallback, onStatusSaved) {
   var self = this
   var command = this._buildCommandArray()
   this.threadName = this._buildThreadName(self.document.thread)
@@ -67,11 +67,11 @@ Job.prototype.run = function(callback, fallback, onStatusSaved) {
 }
 
 // parameters and all calculations are in seconds
-Job.prototype.isDue = function(checkIntervalStart, checkIntervalEnd) {
+JobClass.prototype.isDue = function(checkIntervalStart, checkIntervalEnd) {
   // load distribution algorithm - for example when using */10 * * * * schedule, every job should run in any minute in interval 0..9 (but every job every time with the same offset - derieved from its ID)
   var parsedSchedule = /\*\/(\d*)( \*){4}/.exec(this.document.schedule)
   if (parsedSchedule && parsedSchedule[1]) {
-    var minutesInterval = parsedSchedule[1]
+    var minutesInterval = parseInt(parsedSchedule[1])
 
     // find random number derived from job id in interval (0..minutesInterval)
     var randomGenerator = new chance(this.document._id.toString())
@@ -165,7 +165,7 @@ Job.prototype.isDue = function(checkIntervalStart, checkIntervalEnd) {
   return checkIntervalStart < nextWithOffset && nextWithOffset <= checkIntervalEnd
 }
 
-Job.prototype.copyToImmediate = function(callback) {
+JobClass.prototype.copyToImmediate = function(callback) {
   var self = this
   var newDocument = this.document
   newDocument.sourceId = newDocument._id
@@ -180,7 +180,7 @@ Job.prototype.copyToImmediate = function(callback) {
   })
 }
 
-Job.prototype.moveToHistory = function() {
+JobClass.prototype.moveToHistory = function() {
   var self = this
   var newDocument = this.document
   this.db.collection('immediate').remove({ _id: newDocument._id })
@@ -192,7 +192,7 @@ Job.prototype.moveToHistory = function() {
   })
 }
 
-Job.prototype.rerun = function() {
+JobClass.prototype.rerun = function() {
   var self = this
   var newDocument = this.document
 
@@ -208,15 +208,15 @@ Job.prototype.rerun = function() {
   })
 }
 
-Job.prototype.initByDocument = function(doc) {
+JobClass.prototype.initByDocument = function(doc) {
   this.document = doc
 }
 
-Job.prototype.toString = function() {
+JobClass.prototype.toString = function() {
   return this.document._id + ' ' + this._buildCommand()
 }
 
-Job.prototype._finish = function(code, callback, fallback) {
+JobClass.prototype._finish = function(code, callback, fallback) {
   var finished = new Date().getTime() / 1000
 
   if (code == 0) {
@@ -253,7 +253,7 @@ Job.prototype._finish = function(code, callback, fallback) {
   }
 }
 
-Job.prototype._appendToProperty = function(property, value) {
+JobClass.prototype._appendToProperty = function(property, value) {
   if (this.document[property] === null || typeof this.document[property] == 'undefined') {
     this.document[property] = value
   } else {
@@ -265,7 +265,7 @@ Job.prototype._appendToProperty = function(property, value) {
   this._save(data)
 }
 
-Job.prototype._save = function(data, callback, fallback) {
+JobClass.prototype._save = function(data, callback, fallback) {
   var self = this
   var saveId = Math.random()
   this.db
@@ -292,11 +292,11 @@ Job.prototype._save = function(data, callback, fallback) {
     })
 }
 
-Job.prototype._buildCommandArray = function() {
+JobClass.prototype._buildCommandArray = function() {
   return this._buildCommand(true)
 }
 
-Job.prototype._buildCommand = function(returnAsArray) {
+JobClass.prototype._buildCommand = function(returnAsArray) {
   if (this.nconf.get('sudo:user') && this.nconf.get('sudo:user').length > 0) {
     var args = ['sudo', '-u', this.nconf.get('sudo:user'), '-g', this.nconf.get('sudo:group')]
   } else {
@@ -329,17 +329,17 @@ Job.prototype._buildCommand = function(returnAsArray) {
   }
 }
 
-Job.prototype._buildThreadName = function(threadIndex) {
+JobClass.prototype._buildThreadName = function(threadIndex) {
   var name = '#' + (threadIndex + 1)
 
   var threadNames = this.nconf.get('debug:threadNames')
   if (threadNames) {
-    var name = threadNames[threadIndex]
+    name = threadNames[threadIndex]
   }
 
   return name
 }
 
-Job.prototype._hasProperty = function(prop) {
+JobClass.prototype._hasProperty = function(prop) {
   return typeof this.document[prop] !== 'undefined' && this.document[prop] !== null
 }

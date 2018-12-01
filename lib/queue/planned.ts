@@ -1,4 +1,4 @@
-var Job = require('../job.js')
+var Job = require('../job')
 var EventEmitter = require('events').EventEmitter
 var util = require('util')
 

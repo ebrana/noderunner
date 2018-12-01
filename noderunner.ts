@@ -1,8 +1,8 @@
-var MongoClient = require('mongodb').MongoClient,
+let MongoClient = require('mongodb').MongoClient,
   nconf = require('nconf'),
-  Immediate = require('./lib/queue/immediate'),
-  Planned = require('./lib/queue/planned'),
-  History = require('./lib/queue/history'),
+  ImmediateQueue = require('./lib/queue/immediate'),
+  PlannedQueue = require('./lib/queue/planned'),
+  HistoryQueue = require('./lib/queue/history'),
   Gui = require('./lib/gui'),
   Watchdog = require('./lib/watchdog')
 
@@ -41,9 +41,9 @@ function tryMongoConnection() {
       } else {
         logger.info('Connected to mongo queuerunner DB')
 
-        immediate = new Immediate(db, nconf, logger).run()
-        planned = new Planned(db, nconf, logger).run()
-        history = new History(db, nconf, logger).run()
+        immediate = new ImmediateQueue(db, nconf, logger).run()
+        planned = new PlannedQueue(db, nconf, logger).run()
+        history = new HistoryQueue(db, nconf, logger).run()
         watchdog = new Watchdog(db, nconf, logger).run(immediate)
         if (nconf.get('gui:enable')) {
           gui = new Gui(

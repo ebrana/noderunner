@@ -2,7 +2,7 @@
   "name": "noderunner",
   "version": "1.0.0",
   "description": "Daemon for background runnings jobs from Mongo queues (immediate, planned, history)",
-  "main": "index.js",
+  "main": "built/noderunner.js",
   "scripts": {
     "start": "nodemon",
     "build": "tsc",
@@ -12,6 +12,7 @@
     "unsafe-perm": true
   },
   "dependencies": {
+    "@types/node": "^10.12.11",
     "chance": "^1.0.4",
     "cron-parser": "^0.6.2",
     "express": "^4.13.3",
