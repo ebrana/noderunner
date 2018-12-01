@@ -1,13 +1,13 @@
 import { EventEmitter } from 'events'
 
-var Job = require('../job')
-var ObjectID = require('mongodb').ObjectID
+let Job = require('../job')
+let ObjectID = require('mongodb').ObjectID
 
 export default class History extends EventEmitter {
-  db
-  nconf
-  logger
-  timeout
+  private db
+  private nconf
+  private logger
+  private timeout
 
   constructor(db, nconf, logger) {
     super()
@@ -17,7 +17,7 @@ export default class History extends EventEmitter {
     this.timeout = null
   }
 
-  getJobs(callback, filter) {
+  public getJobs(callback, filter) {
     this.logger.info('filtering GUI ', filter)
     this.db
       .collection('history')
@@ -31,37 +31,37 @@ export default class History extends EventEmitter {
       })
   }
 
-  rerunJob(id, queue) {
+  public rerunJob(id, queue) {
     this.db.collection(queue).findOne({ _id: new ObjectID(id) }, (err, doc) => {
       if (doc != null) {
-        var job = new Job(this)
+        const job = new Job(this)
         job.initByDocument(doc)
         job.rerun()
       }
     })
   }
 
-  getJobsCount(callback) {
+  public getJobsCount(callback) {
     this.db.collection('history').count((err, count) => {
       callback(count)
     })
   }
 
-  run() {
+  public run() {
     // load done immediate jobs and move them to history one by one
     this.db
       .collection('immediate')
       .find({
+        finished: { $lt: new Date().valueOf() / 1000 - this.nconf.get('history:maxAge') / 1000 },
         status: {
           $in: [this.nconf.get('statusAlias:success'), this.nconf.get('statusAlias:error')]
-        },
-        finished: { $lt: new Date().valueOf() / 1000 - this.nconf.get('history:maxAge') / 1000 }
+        }
       })
       .toArray((err, docs) => {
         if (typeof docs !== 'undefined' && docs && docs.length > 0) {
           this.logger.info('moving ' + docs.length + ' old jobs from immediate queue to history')
           docs.forEach(doc => {
-            var job = new Job(this)
+            const job = new Job(this)
             job.initByDocument(doc)
             job.moveToHistory()
             this.logger.debug('moving job ' + job.document._id)
@@ -83,8 +83,8 @@ export default class History extends EventEmitter {
     return this
   }
 
-  clean(hoursCount) {
-    var lowerThanTime = Math.floor(new Date().getTime() / 1000) - hoursCount * 60 * 60
+  public clean(hoursCount) {
+    const lowerThanTime = Math.floor(new Date().getTime() / 1000) - hoursCount * 60 * 60
     this.db
       .collection('history')
       .deleteMany({ finished: { $lt: lowerThanTime } }, (err, result) => {
@@ -105,7 +105,7 @@ export default class History extends EventEmitter {
       })
   }
 
-  stop() {
+  public stop() {
     this.logger.info('stopped')
     clearTimeout(this.timeout)
   }

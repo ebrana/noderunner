@@ -1,13 +1,13 @@
 import { EventEmitter } from 'events'
 
-var Job = require('../job')
+const Job = require('../job')
 
 export default class Planned extends EventEmitter {
-  db
-  nconf
-  logger
-  timeout
-  lastCheckTime
+  private db
+  private nconf
+  private logger
+  private timeout
+  private lastCheckTime
 
   constructor(db, nconf, logger) {
     super()
@@ -17,7 +17,7 @@ export default class Planned extends EventEmitter {
     this.timeout = null
   }
 
-  getJobs(callback, filter) {
+  public getJobs(callback, filter) {
     this.db
       .collection('planned')
       .find(filter, { limit: 100 })
@@ -30,40 +30,40 @@ export default class Planned extends EventEmitter {
       })
   }
 
-  getJobsCount(callback) {
+  public getJobsCount(callback) {
     this.db.collection('planned').count((err, count) => {
       callback(count)
     })
   }
 
-  checkRunningJobBySource(id, callback) {
+  public checkRunningJobBySource(id, callback) {
     this.db
       .collection('immediate')
       .find({
-        sourceId: id,
-        $or: [{ status: 'running' }, { status: 'fetched' }, { status: 'planed' }]
+        $or: [{ status: 'running' }, { status: 'fetched' }, { status: 'planed' }],
+        sourceId: id
       })
       .toArray((err, docs) => {
         callback(docs.length > 0)
       })
   }
 
-  run() {
+  public run() {
     // load planned jobs and move them one by one to immediate
     this.db
       .collection('planned')
       .find()
       .toArray((err, docs) => {
         if (typeof docs !== 'undefined' && docs && docs.length > 0) {
-          var dueJobsCount = 0
-          var checkIntervalLength = this.nconf.get('planned:interval')
-          var checkIntervalStart = this.lastCheckTime
+          let dueJobsCount = 0
+          const checkIntervalLength = this.nconf.get('planned:interval')
+          const checkIntervalStart = this.lastCheckTime
             ? this.lastCheckTime
             : Date.now() - checkIntervalLength
-          var checkIntervalEnd = (this.lastCheckTime = Date.now())
+          const checkIntervalEnd = (this.lastCheckTime = Date.now())
 
           docs.forEach(doc => {
-            var job = new Job(this)
+            const job = new Job(this)
             job.initByDocument(doc)
 
             if (
@@ -131,7 +131,7 @@ export default class Planned extends EventEmitter {
     return this
   }
 
-  stop() {
+  public stop() {
     this.logger.info('stopped')
     clearTimeout(this.timeout)
   }

@@ -1,8 +1,8 @@
-var os = require('os')
-var util = require('util')
-var EventEmitter = require('events').EventEmitter
+import { EventEmitter } from 'events'
+import os = require('os')
+import util = require('util')
 
-interface ThreadStat {
+interface IThreadStat {
   total: number
   byThread: number[]
   intervalFrom?: number
@@ -10,6 +10,20 @@ interface ThreadStat {
 }
 
 export default class Watchdog extends EventEmitter {
+  private db: any
+  private nconf: any
+  private logger: any
+  private interval: any
+  private immediateQueue: any
+  private badSamplesLimit: any
+  private badSamplesCount: number
+  private lastSample: any
+  private lastLoadCalculation: number
+  private emailSent: boolean
+  private emailResetInterval: any
+  private email2Sent: boolean
+  private running: boolean
+
   constructor(db, nconf, logger) {
     super()
 
@@ -30,99 +44,114 @@ export default class Watchdog extends EventEmitter {
     this.email2Sent = false
   }
 
-  run(immediateQueue) {
-    var self = this
-    self.immediateQueue = immediateQueue
+  public run(immediateQueue) {
+    this.immediateQueue = immediateQueue
 
     // check repeatedly congestion and last immediate check time
-    self.interval = setInterval(function() {
-      self.runCongestionCheck()
-    }, self.nconf.get('watchdog:interval'))
+    this.interval = setInterval(() => {
+      this.runCongestionCheck()
+    }, this.nconf.get('watchdog:interval'))
 
     // calculate load
-    self.interval = setInterval(function() {
-      self.runThreadsStatsCheck()
-    }, self.nconf.get('watchdog:loadCheckInterval'))
+    this.interval = setInterval(() => {
+      this.runThreadsStatsCheck()
+    }, this.nconf.get('watchdog:loadCheckInterval'))
 
     // send info email max once per hour
-    self.emailResetInterval = setInterval(function() {
-      self.emailSent = false
-      self.email2Sent = true
+    this.emailResetInterval = setInterval(() => {
+      this.emailSent = false
+      this.email2Sent = true
     }, 60 * 60 * 1000)
 
-    return self
+    return this
+  }
+
+  public loadThreadsStats(secondsBack, callback) {
+    this.db
+      .collection('load')
+      .find({ intervalTo: { $gt: Date.now() / 1000 - secondsBack } })
+      .toArray((err, data) => {
+        if (!err) {
+          callback(data)
+        }
+      })
+  }
+
+  public stop() {
+    this.logger.info('stopped')
+    this.running = false
+    clearInterval(this.interval)
+    clearInterval(this.emailResetInterval)
   }
 
   private runCongestionCheck() {
-    var self = this
-
     // check immediate jobs count
-    self.db.collection('immediate').count(
+    this.db.collection('immediate').count(
       {
         $or: [
-          { status: self.nconf.get('statusAlias:planned') },
-          { status: self.nconf.get('statusAlias:running') }
+          { status: this.nconf.get('statusAlias:planned') },
+          { status: this.nconf.get('statusAlias:running') }
         ]
       },
-      function(err, count) {
+      (err, count) => {
         // actual count bigger than the last one - increment counter
-        if (count > self.lastSample && self.lastSample !== null) {
-          self.badSamplesCount++
-        } else if (count < self.lastSample) {
-          self.badSamplesCount = 0
+        if (count > this.lastSample && this.lastSample !== null) {
+          this.badSamplesCount++
+        } else if (count < this.lastSample) {
+          this.badSamplesCount = 0
         }
 
-        var percents = Math.round((self.badSamplesCount / self.badSamplesLimit) * 100)
+        const percents = Math.round((this.badSamplesCount / this.badSamplesLimit) * 100)
         if (percents < 100) {
-          self.logger.verbose('danger of congestion is on ' + percents + '%')
+          this.logger.verbose('danger of congestion is on ' + percents + '%')
         }
-        self.logger.debug(
+        this.logger.debug(
           'sample=' +
             count +
             ' badSamplesLimit=' +
-            self.badSamplesLimit +
+            this.badSamplesLimit +
             ' badSamplesCount=' +
-            self.badSamplesCount +
+            this.badSamplesCount +
             ' lastSample=' +
-            self.lastSample
+            this.lastSample
         )
 
         // if counter bigger than limit - send email
-        if (self.badSamplesCount >= self.badSamplesLimit) {
-          if (!self.emailSent) {
-            self.sendEmail(
+        if (this.badSamplesCount >= this.badSamplesLimit) {
+          if (!this.emailSent) {
+            this.sendEmail(
               'Noderunner immediate queue planned/running jobs count is growing rapidly. Danger of congestion! Please repair problem and restart noderuner service.',
-              function() {
-                self.emailSent = true
+              () => {
+                this.emailSent = true
               }
             )
           }
-          self.logger.warn(
+          this.logger.warn(
             'Immediate planned/running jobs count is growing rapidly! Danger of congestion!'
           )
-          return self
+          return this
         }
 
-        self.lastSample = count
+        this.lastSample = count
       }
     )
 
     // check last immediate check time
-    var sinceLastCheck = Date.now() - self.immediateQueue.lastCheckTime
-    self.logger.debug('last immediate queue check time ' + sinceLastCheck + 'ms ago')
-    if (sinceLastCheck > self.nconf.get('immediate:interval') * 3) {
-      self.logger.warn(
+    const sinceLastCheck = Date.now() - this.immediateQueue.lastCheckTime
+    this.logger.debug('last immediate queue check time ' + sinceLastCheck + 'ms ago')
+    if (sinceLastCheck > this.nconf.get('immediate:interval') * 3) {
+      this.logger.warn(
         'Time since last immediate queue check is more than 3 times greater than set check interval!'
       )
-      if (!self.email2Sent) {
-        self.sendEmail(
+      if (!this.email2Sent) {
+        this.sendEmail(
           'Time since last immediate queue check is more than 3 times greater than set check interval (' +
             sinceLastCheck +
             '>' +
-            self.nconf.get('immediate:interval') * 3 +
+            this.nconf.get('immediate:interval') * 3 +
             ')! Immediate queue is probably not working.',
-          function() {
-            self.email2Sent = true
+          () => {
+            this.email2Sent = true
           }
         )
       }
@@ -130,16 +159,15 @@ export default class Watchdog extends EventEmitter {
   }
 
   private runThreadsStatsCheck() {
-    var self = this
-    var threadStat = this.calculateThreadsStat()
+    const threadStat = this.calculateThreadsStat()
 
-    var interval = self.nconf.get('watchdog:loadCheckInterval') / 1000
+    const interval = this.nconf.get('watchdog:loadCheckInterval') / 1000
     threadStat.intervalTo = Date.now() / 1000
     threadStat.intervalFrom = threadStat.intervalTo - interval
     this.db.collection('load').insert(threadStat)
     this.emit('newThreadsStat', threadStat)
 
-    self.logger.verbose(
+    this.logger.verbose(
       'average load for last ' +
         interval +
         's: ' +
@@ -150,56 +178,44 @@ export default class Watchdog extends EventEmitter {
     )
   }
 
-  loadThreadsStats(secondsBack, callback) {
-    this.db
-      .collection('load')
-      .find({ intervalTo: { $gt: Date.now() / 1000 - secondsBack } })
-      .toArray(function(err, data) {
-        if (!err) {
-          callback(data)
-        }
-      })
-  }
-
   private sendEmail(text, cb) {
-    var self = this
-    var nodemailer = require('nodemailer')
-    var smtpTransport = require('nodemailer-smtp-transport')
+    const nodemailer = require('nodemailer')
+    const smtpTransport = require('nodemailer-smtp-transport')
 
     nodemailer.createTransport(smtpTransport({ host: 'mail.ebrana.cz', port: 25 })).sendMail(
       {
-        from: self.nconf.get('watchdog:email:from'),
-        to: self.nconf.get('watchdog:email:to'),
+        from: this.nconf.get('watchdog:email:from'),
         subject: 'NodeRunner watchdog - ' + os.hostname(),
-        text: text
+        text,
+        to: this.nconf.get('watchdog:email:to')
       },
-      function(error, info) {
+      (error, info) => {
         if (error) {
-          self.logger.error('cannot send warning email', error)
+          this.logger.error('cannot send warning email', error)
         } else {
           cb(info)
-          self.logger.verbose('warning email sent ', info.response)
+          this.logger.verbose('warning email sent ', info.response)
         }
       }
     )
   }
 
-  private calculateThreadsStat(): ThreadStat {
-    var self = this
-    var intervalDuration = Date.now() / 1000 - self.lastLoadCalculation
-    var intervalFrom = self.lastLoadCalculation
-    var intervalTo = Date.now() / 1000
+  private calculateThreadsStat(): IThreadStat {
+    const intervalDuration = Date.now() / 1000 - this.lastLoadCalculation
+    const intervalFrom = this.lastLoadCalculation
+    const intervalTo = Date.now() / 1000
 
-    self.lastLoadCalculation = Date.now() / 1000
+    this.lastLoadCalculation = Date.now() / 1000
 
     // get all jobs done or started in this interval and truncate them with interval boundaries before duration calculation
-    var total = 0
-    var byThread = self.immediateQueue.threads.map(function() {
+    let total = 0
+    let byThread = this.immediateQueue.threads.map(() => {
       return 0
     })
-    for (var id in self.immediateQueue.jobStats) {
+
+    for (const id in this.immediateQueue.jobStats) {
       // TODO nahradit Object.assign az nebudeme pouzivat node v0.x.x
-      var stat = JSON.parse(JSON.stringify(self.immediateQueue.jobStats[id]))
+      const stat = JSON.parse(JSON.stringify(this.immediateQueue.jobStats[id]))
       // finished not set, use intervalTo
       if (!stat.hasOwnProperty('finished') || stat.finished === null) {
         stat.finished = intervalTo
@@ -213,33 +229,34 @@ export default class Watchdog extends EventEmitter {
       stat.duration = stat.finished - stat.started
 
       total += stat.duration
-      if (!byThread[stat.thread]) byThread[stat.thread] = 0
+      if (!byThread[stat.thread]) {
+        byThread[stat.thread] = 0
+      }
       byThread[stat.thread] += stat.duration
 
       // self.logger.debug('truncated job stats '+id, stat);
     }
 
     total = Math.round((total / intervalDuration) * 1000) / 1000
-    byThread = byThread.map(function(t) {
+    byThread = byThread.map(t => {
       return Math.round((t / intervalDuration) * 1000) / 1000
     })
 
-    self.immediateQueue.resetFinishedJobStats()
+    this.immediateQueue.resetFinishedJobStats()
     return {
-      total: total,
-      byThread: byThread
+      byThread,
+      total
     }
   }
 
   // z vykonnostnich duvodu jiz nepouzivane
   private _calculateLoadMongo(forSeconds, callback) {
-    var self = this
-    var intervalTo = Date.now() / 1000
-    var intervalFrom = intervalTo - forSeconds
-    var intervalDuration = intervalTo - intervalFrom
+    const intervalTo = Date.now() / 1000
+    const intervalFrom = intervalTo - forSeconds
+    const intervalDuration = intervalTo - intervalFrom
 
     // load done jobs contained in measured interval
-    self.db
+    this.db
       .collection('history')
       .find({
         $or: [
@@ -247,32 +264,25 @@ export default class Watchdog extends EventEmitter {
           { $and: [{ started: { $gt: intervalFrom } }, { started: { $lt: intervalTo } }] }
         ]
       })
-      .toArray(function(err, jobs) {
-        var totalUsedSeconds = 0
-        for (var i in jobs) {
+      .toArray((err, jobs) => {
+        let totalUsedSeconds = 0
+        for (const i in jobs) {
           // get duration of job in measured interval (truncate by interval boundaries)
-          var jobFrom = Math.max(jobs[i].started, intervalFrom)
-          var jobTo = Math.min(jobs[i].finished, intervalTo)
+          const jobFrom = Math.max(jobs[i].started, intervalFrom)
+          const jobTo = Math.min(jobs[i].finished, intervalTo)
           totalUsedSeconds += jobTo - jobFrom
         }
-        console.log(totalUsedSeconds + '/' + intervalDuration)
+
         callback(
           Math.round((totalUsedSeconds / intervalDuration) * 100) / 100 +
             '/' +
-            self.immediateQueue.threads.length +
+            this.immediateQueue.threads.length +
             ' (' +
             Math.round(
-              (totalUsedSeconds / intervalDuration / self.immediateQueue.threads.length) * 100
+              (totalUsedSeconds / intervalDuration / this.immediateQueue.threads.length) * 100
             ) +
             ' %)'
         )
       })
-  }
-
-  stop() {
-    this.logger.info('stopped')
-    this.running = false
-    clearInterval(this.interval)
-    clearInterval(this.emailResetInterval)
   }
 }

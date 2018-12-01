@@ -4,16 +4,16 @@ var Job = require('../job')
 var isRunning = require('is-running')
 
 export default class Immediate extends EventEmitter {
-  db
-  nconf
-  logger
-  timeout
-  running
-  lastFinishedCallback
-  lastCheckTime
-  isStuckJobsCheckPlanned
-  threads
-  jobStats
+  private db
+  private nconf
+  private logger
+  private timeout
+  private running
+  private lastFinishedCallback
+  private lastCheckTime
+  private isStuckJobsCheckPlanned
+  private threads
+  private jobStats
 
   constructor(db, nconf, logger) {
     super()
@@ -30,7 +30,7 @@ export default class Immediate extends EventEmitter {
 
     // entry for every thread with null value when free and non-null ('booked' or job _id when currently used)
     this.threads = []
-    for (var i = 0; i < nconf.get('immediate:maxThreadsCount'); i++) {
+    for (let i = 0; i < nconf.get('immediate:maxThreadsCount'); i++) {
       this.threads[i] = null
     }
 
@@ -38,12 +38,172 @@ export default class Immediate extends EventEmitter {
     this.jobStats = {}
   }
 
-  run() {
+  public run() {
     this.running = true
     this._removeStuckRunningJobs(true)
     this._check()
 
     return this
+  }
+
+  public createJobStat(job, threadIndex) {
+    const id = job.document._id
+    if (!this.jobStats[id]) {
+      this.jobStats[id] = {
+        started: job.document.started,
+        thread: threadIndex
+      }
+    }
+  }
+
+  public updateJobStat(job, threadIndex) {
+    const id = job.document._id
+    // job stat not found so it was already removed - create without started
+    if (!this.jobStats[id]) {
+      this.jobStats[id] = {
+        started: null,
+        thread: threadIndex
+      }
+    }
+    this.jobStats[id].finished = Date.now() / 1000
+  }
+
+  // return index of lowest free thread and lock it
+  public bookThread() {
+    for (let i = 0; i < this.threads.length; i++) {
+      if (this.threads[i] === null) {
+        this.logger.silly('booked thread ' + i)
+        this.threads[i] = 'booked'
+        return i
+      }
+    }
+    return null
+  }
+
+  public fetchNextJob(threadIndex, callback, fallback) {
+    const changes = {
+      started: new Date().getTime() / 1000,
+      status: this.nconf.get('statusAlias:fetched'),
+      thread: threadIndex
+    }
+
+    try {
+      this.db
+        .collection('immediate')
+        .findAndModify(
+          { status: this.nconf.get('statusAlias:planned') },
+          [['nextRun', 'asc'], ['priority', 'desc'], ['added', 'desc'], ['started', 'desc']],
+          { $set: changes },
+          { new: true },
+          (err, doc) => {
+            if (err) {
+              this.logger.error('cannot load job from queue', err)
+              fallback(false)
+            } else if (!doc.value) {
+              // no next job found in immediate queue
+              fallback(false)
+            } else {
+              // next job found in immediate queue
+              const job = new Job(this)
+              job.initByDocument(doc.value)
+              callback(job)
+            }
+          }
+        )
+    } catch (e) {
+      fallback(e)
+    }
+  }
+
+  public stop(callback) {
+    if (!this.isAnyBookedThread() && typeof callback === 'function') {
+      callback()
+      return
+    }
+
+    this.lastFinishedCallback = callback
+    this.logger.info('stopped')
+    this.running = false
+    clearTimeout(this.timeout)
+  }
+
+  public resetFinishedJobStats() {
+    for (const id in this.jobStats) {
+      if (this.jobStats[id].finished) {
+        delete this.jobStats[id]
+      } else {
+        this.jobStats[id].started = Date.now() / 1000
+      }
+    }
+  }
+
+  public rebookThread(threadIndex, jobId) {
+    this.threads[threadIndex] = jobId
+  }
+
+  public releaseThread(index) {
+    this.logger.silly('released thread ' + index)
+    this.threads[index] = null
+  }
+
+  public getThreads() {
+    return this.threads
+  }
+
+  public getRunningThreads() {
+    return this.threads.filter(t => {
+      return t !== null && t !== 'booked'
+    })
+  }
+
+  public getBookedThreads() {
+    return this.threads.filter(t => {
+      return t !== null
+    })
+  }
+
+  public isAnyBookedThread() {
+    return this.getBookedThreads().length > 0
+  }
+
+  public getThreadsInfo(highlightIndex) {
+    return (
+      '[' +
+      this.threads
+        .map((t, i) => {
+          return typeof highlightIndex !== 'undefined' && highlightIndex === i
+            ? 'o'
+            : t === null
+            ? '-'
+            : 'x'
+        })
+        .join('') +
+      ']'
+    )
+  }
+
+  public getWaitingJobsCount(callback) {
+    this.db
+      .collection('immediate')
+      .count({ status: this.nconf.get('statusAlias:planned') }, (err, count) => {
+        callback(count)
+      })
+  }
+
+  public getJobs(callback, filter) {
+    this.db
+      .collection('immediate')
+      .find(filter, {
+        limit: 100,
+        sort: [['nextRun', 'asc'], ['priority', 'desc'], ['added', 'desc'], ['started', 'desc']]
+      })
+      .toArray((err, docs) => {
+        if (err) {
+          this.logger.error(err)
+        } else {
+          return callback(docs)
+        }
+      })
   }
 
   private _removeStuckRunningJobs(evenWithoutPid) {
@@ -75,7 +235,7 @@ export default class Immediate extends EventEmitter {
     clearTimeout(this.timeout)
 
     // if queue is already stopped, do nothing
-    if (this.running == false) {
+    if (this.running === false) {
       if (!this.isAnyBookedThread() && this.lastFinishedCallback) {
         this.lastFinishedCallback()
       }
@@ -83,7 +243,7 @@ export default class Immediate extends EventEmitter {
     }
 
     // try to book any free thread
-    var threadIndex = this.bookThread()
+    const threadIndex = this.bookThread()
 
     // if available - do nothing - _check will be called in thread end callback
     if (threadIndex === null) {
@@ -171,165 +331,5 @@ export default class Immediate extends EventEmitter {
         }, this.nconf.get('immediate:interval'))
       }
     )
-  }
-
-  createJobStat(job, threadIndex) {
-    var id = job.document._id
-    if (!this.jobStats[id]) {
-      this.jobStats[id] = {
-        started: job.document.started,
-        thread: threadIndex
-      }
-    }
-  }
-
-  updateJobStat(job, threadIndex) {
-    var id = job.document._id
-    // job stat not found so it was already removed - create without started
-    if (!this.jobStats[id]) {
-      this.jobStats[id] = {
-        started: null,
-        thread: threadIndex
-      }
-    }
-    this.jobStats[id].finished = Date.now() / 1000
-  }
-
-  // return index of lowest free thread and lock it
-  bookThread() {
-    for (var i = 0; i < this.threads.length; i++) {
-      if (this.threads[i] === null) {
-        this.logger.silly('booked thread ' + i)
-        this.threads[i] = 'booked'
-        return i
-      }
-    }
-    return null
-  }
-
-  fetchNextJob(threadIndex, callback, fallback) {
-    var changes = {
-      status: this.nconf.get('statusAlias:fetched'),
-      started: new Date().getTime() / 1000,
-      thread: threadIndex
-    }
-
-    try {
-      this.db
-        .collection('immediate')
-        .findAndModify(
-          { status: this.nconf.get('statusAlias:planned') },
-          [['nextRun', 'asc'], ['priority', 'desc'], ['added', 'desc'], ['started', 'desc']],
-          { $set: changes },
-          { new: true },
-          (err, doc) => {
-            if (err) {
-              this.logger.error('cannot load job from queue', err)
-              fallback(false)
-            } else if (!doc.value) {
-              // no next job found in immediate queue
-              fallback(false)
-            } else {
-              // next job found in immediate queue
-              var job = new Job(this)
-              job.initByDocument(doc.value)
-              callback(job)
-            }
-          }
-        )
-    } catch (e) {
-      fallback(e)
-    }
-  }
-
-  stop(callback) {
-    if (!this.isAnyBookedThread() && typeof callback == 'function') {
-      callback()
-      return
-    }
-
-    this.lastFinishedCallback = callback
-    this.logger.info('stopped')
-    this.running = false
-    clearTimeout(this.timeout)
-  }
-
-  resetFinishedJobStats() {
-    for (var id in this.jobStats) {
-      if (this.jobStats[id].finished) {
-        delete this.jobStats[id]
-      } else {
-        this.jobStats[id].started = Date.now() / 1000
-      }
-    }
-  }
-
-  rebookThread(threadIndex, jobId) {
-    this.threads[threadIndex] = jobId
-  }
-
-  releaseThread(index) {
-    this.logger.silly('released thread ' + index)
-    this.threads[index] = null
-  }
-
-  getThreads() {
-    return this.threads
-  }
-
-  getRunningThreads() {
-    return this.threads.filter(t => {
-      return t !== null && t != 'booked'
-    })
-  }
-
-  getBookedThreads() {
-    return this.threads.filter(t => {
-      return t !== null
-    })
-  }
-
-  isAnyBookedThread() {
-    return this.getBookedThreads().length > 0
-  }
-
-  getThreadsInfo(highlightIndex) {
-    return (
-      '[' +
-      this.threads
-        .map((t, i) => {
-          return typeof highlightIndex != 'undefined' && highlightIndex == i
-            ? 'o'
-            : t === null
-            ? '-'
-            : 'x'
-        })
-        .join('') +
-      ']'
-    )
-  }
-
-  getWaitingJobsCount(callback) {
-    this.db
-      .collection('immediate')
-      .count({ status: this.nconf.get('statusAlias:planned') }, (err, count) => {
-        callback(count)
-      })
-  }
-
-  getJobs(callback, filter) {
-    this.db
-      .collection('immediate')
-      .find(filter, {
-        limit: 100,
-        sort: [['nextRun', 'asc'], ['priority', 'desc'], ['added', 'desc'], ['started', 'desc']]
-      })
-      .toArray((err, docs) => {
-        if (err) {
-          this.logger.error(err)
-        } else {
-          return callback(docs)
-        }
-      })
   }
 }

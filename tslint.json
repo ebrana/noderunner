@@ -1,0 +1,11 @@
+{
+  "defaultSeverity": "error",
+  "extends": ["tslint:latest", "tslint-config-prettier"],
+  "jsRules": {},
+  "rulesDirectory": [],
+  "rules": {
+    "one-variable-per-declaration": false,
+    "forin": false,
+    "only-arrow-functions": [true, "allow-declarations", "allow-named-functions"]
+  }
+}

@@ -1,12 +1,12 @@
 import { MongoClient } from 'mongodb'
 import * as nconf from 'nconf'
 
-import PlannedQueue from './queue/planned'
-import ImmediateQueue from './queue/immediate'
-import HistoryQueue from './queue/history'
-import Watchdog from './watchdog'
 import Gui from './gui'
 import { createLogger } from './logger'
+import HistoryQueue from './queue/history'
+import ImmediateQueue from './queue/immediate'
+import PlannedQueue from './queue/planned'
+import Watchdog from './watchdog'
 
 // Config from ENV, CLI, default file and local file
 nconf
@@ -29,7 +29,7 @@ tryMongoConnection()
 
 // Graceful restart handler - give some time to all queues to stop, then force exit
 process.on('SIGABRT', () => {
-  var timeout = nconf.get('gracefulShutdownTimeout')
+  const timeout = nconf.get('gracefulShutdownTimeout')
   logger.warn(
     'SHUTDOWN: Graceful shutdown request detected. Stop queues and wait for ' +
       timeout / 1000 +
@@ -76,13 +76,13 @@ function onMongoFailure() {
 }
 
 function tryMongoConnection() {
-  var options = {
+  const options = {
+    replset: { socketOptions: { keepAlive: 1, connectTimeoutMS: 30000 } },
     server: {
-      reconnectTries: 100,
       reconnectInterval: 1000,
+      reconnectTries: 100,
       socketOptions: { keepAlive: 1, connectTimeoutMS: 30000 }
-    },
-    replset: { socketOptions: { keepAlive: 1, connectTimeoutMS: 30000 } }
+    }
   }
 
   MongoClient.connect(
