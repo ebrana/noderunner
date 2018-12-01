@@ -1,10 +1,11 @@
 import _ from 'lodash'
 import { Logger } from './logger'
 import Watchdog from './watchdog'
+import * as Nconf from 'nconf'
 
 export default class Gui {
   db: string
-  nconf: any
+  nconf: Nconf.Provider
   logger: Logger
   queues
   watchdog: Watchdog

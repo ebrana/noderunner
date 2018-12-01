@@ -9,7 +9,7 @@
       "request": "launch",
       "name": "Debug",
       "runtimeArgs": ["-r", "ts-node/register"],
-      "args": ["${workspaceFolder}/src/noderunner.ts"]
+      "args": ["${workspaceFolder}/src/index.ts"]
     },
     {
       "type": "node",

@@ -13,6 +13,7 @@
     "unsafe-perm": true
   },
   "dependencies": {
+    "@types/nconf": "0.0.37",
     "@types/node": "^10.12.11",
     "chance": "^1.0.4",
     "cron-parser": "^0.6.2",
