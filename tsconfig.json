@@ -6,5 +6,5 @@
     "lib": ["es5"],
     "sourceMap": true
   },
-  "include": ["./*.ts", "./src/**/*"]
+  "include": ["src/**/*"]
 }
