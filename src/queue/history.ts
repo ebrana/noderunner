@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events'
 
-let Job = require('../job')
-let ObjectID = require('mongodb').ObjectID
+import { ObjectID } from 'mongodb'
+import Job from '../job'
 
 export default class History extends EventEmitter {
   private db

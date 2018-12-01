@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events'
 
-const Job = require('../job')
+import Job from '../job'
 
 export default class Planned extends EventEmitter {
   private db

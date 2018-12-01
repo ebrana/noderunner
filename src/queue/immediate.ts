@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events'
 
-var Job = require('../job')
-var isRunning = require('is-running')
+import isRunning from 'is-running'
+import Job from '../job'
 
 export default class Immediate extends EventEmitter {
   private db
