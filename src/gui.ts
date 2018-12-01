@@ -1,4 +1,4 @@
-import _ from 'lodash'
+import { debounce } from 'lodash'
 import { Logger } from './logger'
 import Watchdog from './watchdog'
 import * as Nconf from 'nconf'
@@ -45,7 +45,7 @@ export default class Gui {
 
     // on user connected
     self.io.on('connection', function(socket) {
-      self.logger.info('GUI: user ' + socket.id + ' connected')
+      self.logger.info('user ' + socket.id + ' connected')
 
       socket.on('error', function(e) {
         self.logger.error(e)
@@ -74,7 +74,7 @@ export default class Gui {
       })
 
       socket.on('requestQueueData', function(params) {
-        self.logger.verbose('GUI: request queue data', params)
+        self.logger.verbose('request queue data', params)
         try {
           self.updateQueue(params.queue, params.filter, socket)
         } catch (e) {
@@ -130,7 +130,7 @@ export default class Gui {
     return this
   }
 
-  updateWaitingCount = _.debounce(function() {
+  updateWaitingCount = debounce(function() {
     var self = this
     if (self.io.sockets.sockets.length > 0) {
       console.log('THROTTLED updateWaitingCount')
@@ -216,17 +216,17 @@ export default class Gui {
   }
 
   emitToAll(action, params) {
-    this.logger.debug('GUI: emitToAll event ' + action)
+    this.logger.debug('emitToAll event ' + action)
     this.io.emit(action, params)
   }
 
   emit(socket, action, params, logDetails?) {
-    this.logger.debug('GUI: emit event ' + action, logDetails ? logDetails : '')
+    this.logger.debug('emit event ' + action, logDetails ? logDetails : '')
     socket.emit(action, params)
   }
 
   stop() {
     this.io.close()
-    this.logger.info('GUI: stopped')
+    this.logger.info('stopped')
   }
 }

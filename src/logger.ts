@@ -1,4 +1,5 @@
-import { createLogger as winstonCreateLogger, format, transports, Logger } from 'winston'
+import * as rightpad from 'right-pad'
+import { createLogger as winstonCreateLogger, format, transports, Logger, verbose } from 'winston'
 const { combine, timestamp, label, printf, colorize } = format
 
 import * as Transport from 'winston-transport'
@@ -23,13 +24,15 @@ class MongoErrorCatcher extends Transport {
 }
 
 const myFormat = printf(info => {
-  return `${info.timestamp} [${info.label}] ${info.level}: ${info.message}`
+  const label = rightpad(`[${info.label}]`, 12, ' ')
+  const space = rightpad(' ', 18 - info.level.length, ' ')
+  return `${info.timestamp} ${label} ${info.level}${space} ${info.message}`
 })
 
 export function createLogger(minLevel: string, namespace: string, onMongoError?: Function): Logger {
   const transport = new transports.Console({
     level: minLevel,
-    format: combine(label({ label: namespace.toUpperCase() }), colorize(), timestamp(), myFormat)
+    format: combine(label({ label: namespace.toUpperCase() }), timestamp(), colorize(), myFormat)
   })
 
   return winstonCreateLogger({

@@ -18,7 +18,7 @@ export default class History extends EventEmitter {
   }
 
   getJobs(callback, filter) {
-    this.logger.info('HISTORY: filtering GUI ', filter)
+    this.logger.info('filtering GUI ', filter)
     this.db
       .collection('history')
       .find(filter, { limit: 100, sort: [['finished', 'desc']] })
@@ -59,20 +59,16 @@ export default class History extends EventEmitter {
       })
       .toArray((err, docs) => {
         if (typeof docs !== 'undefined' && docs && docs.length > 0) {
-          this.logger.info(
-            'HISTORY: moving ' + docs.length + ' old jobs from immediate queue to history'
-          )
+          this.logger.info('moving ' + docs.length + ' old jobs from immediate queue to history')
           docs.forEach(doc => {
             var job = new Job(this)
             job.initByDocument(doc)
             job.moveToHistory()
-            this.logger.debug('HISTORY: moving job ' + job.document._id)
+            this.logger.debug('moving job ' + job.document._id)
           })
         } else {
           this.logger.verbose(
-            'HISTORY: nothing to move, sleep for ' +
-              this.nconf.get('history:interval') / 1000 +
-              ' secs'
+            'nothing to move, sleep for ' + this.nconf.get('history:interval') / 1000 + ' secs'
           )
         }
 
@@ -93,10 +89,10 @@ export default class History extends EventEmitter {
       .collection('history')
       .deleteMany({ finished: { $lt: lowerThanTime } }, (err, result) => {
         if (err) {
-          this.logger.error('HISTORY: clean finished<' + lowerThanTime + ' failed', err)
+          this.logger.error('clean finished<' + lowerThanTime + ' failed', err)
         } else {
           this.logger.info(
-            'HISTORY: clean finished<' +
+            'clean finished<' +
               lowerThanTime +
               ' (' +
               this.nconf.get('history:cleanHours') +
@@ -110,7 +106,7 @@ export default class History extends EventEmitter {
   }
 
   stop() {
-    this.logger.info('HISTORY: stopped')
+    this.logger.info('stopped')
     clearTimeout(this.timeout)
   }
 }

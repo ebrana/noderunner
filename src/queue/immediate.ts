@@ -47,10 +47,7 @@ export default class Immediate extends EventEmitter {
   }
 
   private _removeStuckRunningJobs(evenWithoutPid) {
-    this.logger.warn(
-      'IMMEDIATE: try to move stuck running/fetched jobs - evenWithoutPid=',
-      evenWithoutPid
-    )
+    this.logger.warn('try to move stuck running/fetched jobs - evenWithoutPid=', evenWithoutPid)
     this.db
       .collection('immediate')
       .find({ $or: [{ status: 'running' }, { status: 'fetched' }] })
@@ -59,7 +56,7 @@ export default class Immediate extends EventEmitter {
           if ((evenWithoutPid && !doc.pid) || (doc.pid && !isRunning(doc.pid))) {
             this.db.collection('immediate').remove(doc)
             this.logger.warn(
-              'IMMEDIATE: moving stuck running/fetched job with PID and _id: ',
+              'moving stuck running/fetched job with PID and _id: ',
               doc.pid,
               doc._id.toString()
             )
@@ -90,7 +87,7 @@ export default class Immediate extends EventEmitter {
 
     // if available - do nothing - _check will be called in thread end callback
     if (threadIndex === null) {
-      this.logger.debug('IMMEDIATE: no available thread, waiting...')
+      this.logger.debug('no available thread, waiting...')
       return
     }
 
@@ -123,7 +120,7 @@ export default class Immediate extends EventEmitter {
             this.emit('historyCountIncreased', 1)
 
             this.logger.error(
-              'IMMEDIATE: error during job run, sleep for ' +
+              'error during job run, sleep for ' +
                 this.nconf.get('immediate:interval') / 1000 +
                 ' secs',
               job.document
@@ -131,14 +128,14 @@ export default class Immediate extends EventEmitter {
 
             // plan stuck jobs control after half hour - should be enough for mongo to be up again
             if (!this.isStuckJobsCheckPlanned) {
-              this.logger.warn('IMMEDIATE: planning stucked jobs check after one hour')
+              this.logger.warn('planning stucked jobs check after one hour')
               this.isStuckJobsCheckPlanned = true
               setTimeout(() => {
                 this.isStuckJobsCheckPlanned = false
                 this._removeStuckRunningJobs(false)
               }, 30 * 60 * 1000)
             } else {
-              this.logger.warn('IMMEDIATE: stucked jobs check already planned')
+              this.logger.warn('stucked jobs check already planned')
             }
 
             clearTimeout(this.timeout)
@@ -160,15 +157,11 @@ export default class Immediate extends EventEmitter {
 
         if (e) {
           this.logger.error(
-            'IMMEDIATE: error during fetch, sleep for ' +
-              this.nconf.get('immediate:interval') / 1000 +
-              ' secs'
+            'error during fetch, sleep for ' + this.nconf.get('immediate:interval') / 1000 + ' secs'
           )
         } else {
           this.logger.verbose(
-            'IMMEDIATE: nothing to run, sleep for ' +
-              this.nconf.get('immediate:interval') / 1000 +
-              ' secs'
+            'nothing to run, sleep for ' + this.nconf.get('immediate:interval') / 1000 + ' secs'
           )
         }
 
@@ -206,7 +199,7 @@ export default class Immediate extends EventEmitter {
   bookThread() {
     for (var i = 0; i < this.threads.length; i++) {
       if (this.threads[i] === null) {
-        this.logger.silly('IMMEDIATE: booked thread ' + i)
+        this.logger.silly('booked thread ' + i)
         this.threads[i] = 'booked'
         return i
       }
@@ -231,7 +224,7 @@ export default class Immediate extends EventEmitter {
           { new: true },
           (err, doc) => {
             if (err) {
-              this.logger.error('IMMEDIATE: cannot load job from queue', err)
+              this.logger.error('cannot load job from queue', err)
               fallback(false)
             } else if (!doc.value) {
               // no next job found in immediate queue
@@ -256,7 +249,7 @@ export default class Immediate extends EventEmitter {
     }
 
     this.lastFinishedCallback = callback
-    this.logger.info('IMMEDIATE: stopped')
+    this.logger.info('stopped')
     this.running = false
     clearTimeout(this.timeout)
   }
@@ -276,7 +269,7 @@ export default class Immediate extends EventEmitter {
   }
 
   releaseThread(index) {
-    this.logger.silly('IMMEDIATE: released thread ' + index)
+    this.logger.silly('released thread ' + index)
     this.threads[index] = null
   }
 

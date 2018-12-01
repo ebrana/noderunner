@@ -74,10 +74,10 @@ export default class Watchdog extends EventEmitter {
 
         var percents = Math.round((self.badSamplesCount / self.badSamplesLimit) * 100)
         if (percents < 100) {
-          self.logger.verbose('WATCHDOG: danger of congestion is on ' + percents + '%')
+          self.logger.verbose('danger of congestion is on ' + percents + '%')
         }
         self.logger.debug(
-          'WATCHDOG: sample=' +
+          'sample=' +
             count +
             ' badSamplesLimit=' +
             self.badSamplesLimit +
@@ -98,7 +98,7 @@ export default class Watchdog extends EventEmitter {
             )
           }
           self.logger.warn(
-            'WATCHDOG: Immediate planned/running jobs count is growing rapidly! Danger of congestion!'
+            'Immediate planned/running jobs count is growing rapidly! Danger of congestion!'
           )
           return self
         }
@@ -109,10 +109,10 @@ export default class Watchdog extends EventEmitter {
 
     // check last immediate check time
     var sinceLastCheck = Date.now() - self.immediateQueue.lastCheckTime
-    self.logger.debug('WATCHDOG: last immediate queue check time ' + sinceLastCheck + 'ms ago')
+    self.logger.debug('last immediate queue check time ' + sinceLastCheck + 'ms ago')
     if (sinceLastCheck > self.nconf.get('immediate:interval') * 3) {
       self.logger.warn(
-        'WATCHDOG: Time since last immediate queue check is more than 3 times greater than set check interval!'
+        'Time since last immediate queue check is more than 3 times greater than set check interval!'
       )
       if (!self.email2Sent) {
         self.sendEmail(
@@ -140,7 +140,7 @@ export default class Watchdog extends EventEmitter {
     this.emit('newThreadsStat', threadStat)
 
     self.logger.verbose(
-      'WATCHDOG: average load for last ' +
+      'average load for last ' +
         interval +
         's: ' +
         threadStat.total +
@@ -175,10 +175,10 @@ export default class Watchdog extends EventEmitter {
       },
       function(error, info) {
         if (error) {
-          self.logger.error('WATCHDOG: cannot send warning email', error)
+          self.logger.error('cannot send warning email', error)
         } else {
           cb(info)
-          self.logger.verbose('WATCHDOG: warning email sent ', info.response)
+          self.logger.verbose('warning email sent ', info.response)
         }
       }
     )
@@ -216,7 +216,7 @@ export default class Watchdog extends EventEmitter {
       if (!byThread[stat.thread]) byThread[stat.thread] = 0
       byThread[stat.thread] += stat.duration
 
-      // self.logger.debug('WATCHDOG: truncated job stats '+id, stat);
+      // self.logger.debug('truncated job stats '+id, stat);
     }
 
     total = Math.round((total / intervalDuration) * 1000) / 1000
@@ -270,7 +270,7 @@ export default class Watchdog extends EventEmitter {
   }
 
   stop() {
-    this.logger.info('WATCHDOG: stopped')
+    this.logger.info('stopped')
     this.running = false
     clearInterval(this.interval)
     clearInterval(this.emailResetInterval)

@@ -76,14 +76,12 @@ export default class Planned extends EventEmitter {
                   this.checkRunningJobBySource(doc._id, isRunning => {
                     if (isRunning) {
                       this.logger.warn(
-                        'PLANNED: job ' +
+                        'job ' +
                           doc._id +
                           ' skipped due to concurrence mode (same job already running)'
                       )
                     } else {
-                      this.logger.debug(
-                        'PLANNED: moving job ' + job.document._id /*job.toString()*/
-                      )
+                      this.logger.debug('moving job ' + job.document._id /*job.toString()*/)
                       job.copyToImmediate(() => {
                         this.emit('waitingCountIncreased', 1)
                       })
@@ -93,16 +91,16 @@ export default class Planned extends EventEmitter {
                 case 'kill':
                   // TODO kill all running jobs with same source
                   this.logger.warn(
-                    'PLANNED: concurrency mode kill is not supported yet - using allow instead'
+                    'concurrency mode kill is not supported yet - using allow instead'
                   )
                 case 'wait':
                   // TODO do nothing and try again in next round
                   this.logger.warn(
-                    'PLANNED: concurrency mode wait is not supported yet - using allow instead'
+                    'concurrency mode wait is not supported yet - using allow instead'
                   )
                 case 'allow':
                 default:
-                  this.logger.debug('PLANNED: moving job ' + job.document._id /*job.toString()*/)
+                  this.logger.debug('moving job ' + job.document._id /*job.toString()*/)
                   dueJobsCount++
                   job.copyToImmediate(() => {
                     this.emit('waitingCountIncreased', 1)
@@ -113,22 +111,20 @@ export default class Planned extends EventEmitter {
             }
           })
           if (dueJobsCount > 0) {
-            this.logger.info(
-              'PLANNED: moving ' + dueJobsCount + ' due planned jobs to immediate queue'
-            )
+            this.logger.info('moving ' + dueJobsCount + ' due planned jobs to immediate queue')
           } else {
             this.logger.verbose(
-              'PLANNED: no due job, sleep for ' + this.nconf.get('planned:interval') / 1000 + 's'
+              'no due job, sleep for ' + this.nconf.get('planned:interval') / 1000 + 's'
             )
           }
         } else {
           this.logger.verbose(
-            'PLANNED: no planed job, sleep for ' + this.nconf.get('planned:interval') / 1000 + 's'
+            'no planed job, sleep for ' + this.nconf.get('planned:interval') / 1000 + 's'
           )
         }
 
         // timeout must be exactly 1min - otherwise some jobs wont run or run twice a time
-        this.timeout = setTimeout(function() {
+        this.timeout = setTimeout(() => {
           this.run()
         }, this.nconf.get('planned:interval'))
       })
@@ -136,7 +132,7 @@ export default class Planned extends EventEmitter {
   }
 
   stop() {
-    this.logger.info('PLANNED: stopped')
+    this.logger.info('stopped')
     clearTimeout(this.timeout)
   }
 }

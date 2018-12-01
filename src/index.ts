@@ -70,7 +70,7 @@ function onMongoFailure() {
   history.stop()
   watchdog.stop()
   immediate.stop(() => {
-    logger.warn('IMMEDIATE: instance with broken mongo just stopped')
+    logger.warn('instance with broken mongo just stopped')
     tryMongoConnection()
   })
 }
@@ -90,11 +90,11 @@ function tryMongoConnection() {
     options,
     (err, db) => {
       if (err) {
-        logger.error('Mongo connection error, try in 10 secs. ', err)
+        logger.error('Mongo connection error, try in 10 secs. ' + JSON.stringify(err))
         clearTimeout(mongoTimeout)
         mongoTimeout = setTimeout(tryMongoConnection, 3000)
       } else {
-        logger.info('Connected to mongo queuerunner DB')
+        logger.info('Connected to Mongo')
 
         immediate = new ImmediateQueue(db, nconf, createLoggerForNamespace('immediate')).run()
         planned = new PlannedQueue(db, nconf, createLoggerForNamespace('planned')).run()
