@@ -12,11 +12,15 @@
     {
       "type": "npm",
       "script": "lint",
-
       "problemMatcher": {
         "base": "$tslint5",
         "fileLocation": "relative"
       }
+    },
+    {
+      "type": "npm",
+      "script": "coverage",
+      "problemMatcher": []
     }
   ]
 }

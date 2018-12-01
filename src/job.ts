@@ -1,8 +1,22 @@
 import chance = require('chance')
 import parser = require('cron-parser')
+import { ObjectID } from 'mongodb'
 
-export default class JobClass {
-  public document: any
+export interface IDocument {
+  _id: ObjectID
+  status: string
+  command: string
+  nice?: number
+  schedule?: string
+  thread?: number
+  sourceId?: string
+  added?: number
+  output?: string
+  errors?: string
+}
+
+export default class Job {
+  public document: IDocument
 
   private db: any
   private nconf: any
@@ -297,19 +311,7 @@ export default class JobClass {
     args = args.concat(this._hasProperty('nice') ? ['nice', '-n', this.document.nice] : [])
 
     // if we had command property, use it instead of deprecated interpreter, basepath, executable, args
-    if (this._hasProperty('command')) {
-      args = args.concat(this.document.command.split(' '))
-    } else {
-      args = args.concat(this._hasProperty('interpreter') ? [this.document.interpreter] : [])
-      if (this._hasProperty('basePath') && this.document.basePath.length > 0) {
-        let path = this.document.basePath + '/'
-        if (this._hasProperty('executable')) {
-          path += this.document.executable
-        }
-        args.push(path)
-      }
-      args = args.concat(this._hasProperty('args') ? this.document.args.split(' ') : [])
-    }
+    args = args.concat(this.document.command.split(' '))
 
     const exe = args.shift()
 

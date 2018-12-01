@@ -16,7 +16,7 @@ class MongoErrorCatcher extends Transport {
   }
 
   public log({ message, level }, callback) {
-    if (level === 'error' && message === 'topology was destroyed') {
+    if (this.onMongoError && level === 'error' && message === 'topology was destroyed') {
       this.onMongoError()
     }
     callback()
