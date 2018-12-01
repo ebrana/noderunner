@@ -26,7 +26,7 @@ class MongoErrorCatcher extends Transport {
 const myFormat = printf(info => {
   const label = rightpad(`[${info.label}]`, 12, ' ')
   const space = rightpad(' ', 18 - info.level.length, ' ')
-  return `${info.timestamp} ${label} ${info.level}${space} ${info.message}`
+  return `${info.timestamp} ${info.level}${space} ${label} ${info.message}`
 })
 
 export function createLogger(minLevel: string, namespace: string, onMongoError?: Function): Logger {

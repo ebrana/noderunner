@@ -36,7 +36,7 @@ export default class Gui {
     var self = this
     self.io = self._initSocket()
 
-    self.logger.info('GUI socket.io listens on ' + 8001)
+    self.logger.info('socket.io listens on ' + 8001)
 
     // INCOMING EVENTS
     // Immediate -- runningJobsList, runningCountChanged, jobFetched, jobCompleted, jobStarted, historyCountIncreased, waitingCountDecreased

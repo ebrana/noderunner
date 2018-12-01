@@ -94,7 +94,7 @@ function tryMongoConnection() {
         clearTimeout(mongoTimeout)
         mongoTimeout = setTimeout(tryMongoConnection, 3000)
       } else {
-        logger.info('Connected to Mongo')
+        logger.info('connected to Mongo')
 
         immediate = new ImmediateQueue(db, nconf, createLoggerForNamespace('immediate')).run()
         planned = new PlannedQueue(db, nconf, createLoggerForNamespace('planned')).run()

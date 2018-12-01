@@ -7,7 +7,8 @@
     "start": "nodemon",
     "build": "tsc",
     "test": "jest",
-    "coverage": "jest --coverage"
+    "coverage": "jest --coverage",
+    "mongo": "docker run -d -p 27017:27017 mongo"
   },
   "config": {
     "unsafe-perm": true
