@@ -51,7 +51,7 @@ export default class Job {
         executedCommand: command[0] + ' ' + command[1].join(' '),
         status: this.nconf.get('statusAlias:running')
       },
-      function(document) {
+      document => {
         if (typeof onStatusSaved !== 'undefined') {
           onStatusSaved(document)
         }
@@ -63,19 +63,19 @@ export default class Job {
           pid: child.pid
         })
 
-        child.stdout.on('data', function(data) {
+        child.stdout.on('data', data => {
           // TODO dodelat buffer, aby se nevolalo mongo pri kazdem radku
           // self.logger.verbose('THREAD ' + self.threadName + ': data ', data.toString().replace('\n', ' '));
           this._appendToProperty('output', data.toString())
         })
-        child.stderr.on('data', function(data) {
+        child.stderr.on('data', data => {
           this.logger.warn(
             'THREAD ' + this.threadName + ': error ',
             data.toString().replace('\n', ' ')
           )
           this._appendToProperty('errors', data.toString())
         })
-        child.on('exit', function(code) {
+        child.on('exit', code => {
           this._finish(code, callback, fallback)
         })
       },
