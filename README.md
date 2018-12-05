@@ -1,5 +1,7 @@
 # noderunner
 
+> NOTE: New version based on TypeScript is being developed in [devel](https://github.com/ebrana/noderunner/tree/devel) branch.
+
 Noderunner is Node.js daemon service for background running jobs from some queue with strictly limited number of concurrent processes. Currently only supported queue storage is MongoDB. You can use (see [dvorakjan/noderunner-php](https://github.com/dvorakjan/noderunner-php) to create queue items from PHP application.
 
 ## Architecture
