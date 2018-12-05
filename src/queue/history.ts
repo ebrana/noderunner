@@ -1,19 +1,12 @@
-import { EventEmitter } from 'events'
-
 import { ObjectID } from 'mongodb'
 import Job from '../job'
+import Queue from '../queue'
 
-export default class History extends EventEmitter {
-  private db
-  private nconf
-  private logger
+export default class History extends Queue {
   private timeout
 
   constructor(db, nconf, logger) {
-    super()
-    this.db = db
-    this.nconf = nconf
-    this.logger = logger
+    super(db, nconf, logger)
     this.timeout = null
   }
 

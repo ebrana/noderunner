@@ -1,13 +1,22 @@
 import { debounce } from 'lodash'
 import * as Nconf from 'nconf'
 import { Logger } from './logger'
+import History from './queue/history'
+import Immediate from './queue/immediate'
+import Planned from './queue/planned'
 import Watchdog from './watchdog'
+
+interface IQueues {
+  immediate: Immediate
+  planned: Planned
+  history: History
+}
 
 export default class Gui {
   public db: string
   public nconf: Nconf.Provider
   public logger: Logger
-  public queues
+  public queues: IQueues
   public watchdog: Watchdog
   public timeouts
   public timeoutsOnEndTime

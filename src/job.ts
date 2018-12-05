@@ -9,7 +9,7 @@ export interface IDocument {
   nice?: number
   schedule?: string
   thread?: number
-  sourceId?: string
+  sourceId?: ObjectID
   added?: number
   output?: string
   errors?: string

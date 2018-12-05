@@ -9,12 +9,13 @@
     "test": "jest",
     "coverage": "jest --coverage",
     "lint": "tslint -c tslint.json 'src/**/*.ts'",
-    "mongo": "docker run -d -p 27017:27017 mongo"
+    "mongo": "docker run -p 27017:27017 mongo"
   },
   "config": {
     "unsafe-perm": true
   },
   "dependencies": {
+    "@types/mongodb": "^2.2.23",
     "@types/nconf": "0.0.37",
     "@types/node": "^10.12.11",
     "chance": "^1.0.4",

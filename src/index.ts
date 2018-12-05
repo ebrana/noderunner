@@ -1,4 +1,4 @@
-import { MongoClient } from 'mongodb'
+import { MongoClient, MongoClientOptions } from 'mongodb'
 import * as nconf from 'nconf'
 
 import Gui from './gui'
@@ -76,13 +76,10 @@ function onMongoFailure() {
 }
 
 function tryMongoConnection() {
-  const options = {
-    replset: { socketOptions: { keepAlive: 1, connectTimeoutMS: 30000 } },
-    server: {
-      reconnectInterval: 1000,
-      reconnectTries: 100,
-      socketOptions: { keepAlive: 1, connectTimeoutMS: 30000 }
-    }
+  const options: MongoClientOptions = {
+    reconnectInterval: 1000,
+    reconnectTries: 100,
+    socketOptions: { keepAlive: true, connectTimeoutMS: 30000 }
   }
 
   MongoClient.connect(

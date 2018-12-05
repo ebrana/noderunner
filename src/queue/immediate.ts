@@ -1,12 +1,8 @@
-import { EventEmitter } from 'events'
-
 import isRunning from 'is-running'
 import Job from '../job'
+import Queue from '../queue'
 
-export default class Immediate extends EventEmitter {
-  private db
-  private nconf
-  private logger
+export default class Immediate extends Queue {
   private timeout
   private running
   private lastFinishedCallback
@@ -16,11 +12,7 @@ export default class Immediate extends EventEmitter {
   private jobStats
 
   constructor(db, nconf, logger) {
-    super()
-
-    this.db = db
-    this.nconf = nconf
-    this.logger = logger
+    super(db, nconf, logger)
 
     this.timeout = null
     this.running = false
@@ -90,6 +82,7 @@ export default class Immediate extends EventEmitter {
     try {
       this.db
         .collection('immediate')
+        // @ts-ignore this method is missing in mongodb type, need to update mongodb to v3
         .findAndModify(
           { status: this.nconf.get('statusAlias:planned') },
           [['nextRun', 'asc'], ['priority', 'desc'], ['added', 'desc'], ['started', 'desc']],
@@ -211,6 +204,7 @@ export default class Immediate extends EventEmitter {
     this.db
       .collection('immediate')
       .find({ $or: [{ status: 'running' }, { status: 'fetched' }] })
+      // @ts-ignore this method is missing in mongodb type, need to update mongodb to v3
       .each((err, doc) => {
         if (doc != null) {
           if ((evenWithoutPid && !doc.pid) || (doc.pid && !isRunning(doc.pid))) {

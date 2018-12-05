@@ -21,6 +21,11 @@
       "type": "npm",
       "script": "coverage",
       "problemMatcher": []
+    },
+    {
+      "type": "npm",
+      "script": "mongo",
+      "problemMatcher": []
     }
   ]
 }

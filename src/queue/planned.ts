@@ -1,19 +1,12 @@
-import { EventEmitter } from 'events'
-
 import Job from '../job'
+import Queue from '../queue'
 
-export default class Planned extends EventEmitter {
-  private db
-  private nconf
-  private logger
+export default class Planned extends Queue {
   private timeout
   private lastCheckTime
 
   constructor(db, nconf, logger) {
-    super()
-    this.db = db
-    this.nconf = nconf
-    this.logger = logger
+    super(db, nconf, logger)
     this.timeout = null
   }
 
