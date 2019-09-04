@@ -10,6 +10,7 @@
     "unsafe-perm": true
   },
   "dependencies": {
+    "body-parser": "^1.19.0",
     "chance": "^1.0.4",
     "cron-parser": "^0.6.2",
     "express": "^4.13.3",
