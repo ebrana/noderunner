@@ -3,7 +3,7 @@ import Job from '../job'
 import Queue from '../queue'
 
 export default class History extends Queue {
-  private timeout
+  private timeout: NodeJS.Timeout
 
   constructor(db, nconf, logger) {
     super(db, nconf, logger)

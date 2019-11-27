@@ -1,6 +1,9 @@
 import { EventEmitter } from 'events'
-import os = require('os')
-import util = require('util')
+import { Db } from 'mongodb'
+import { Provider as Nconf } from 'nconf'
+import * as os from 'os'
+import { Logger } from './logger'
+import Immediate from './queue/immediate'
 
 interface IThreadStat {
   total: number
@@ -10,17 +13,17 @@ interface IThreadStat {
 }
 
 export default class Watchdog extends EventEmitter {
-  private db: any
-  private nconf: any
-  private logger: any
-  private interval: any
-  private immediateQueue: any
-  private badSamplesLimit: any
+  private db: Db
+  private nconf: Nconf
+  private logger: Logger
+  private interval: NodeJS.Timeout
+  private immediateQueue: Immediate
+  private badSamplesLimit: number
   private badSamplesCount: number
-  private lastSample: any
+  private lastSample: number
   private lastLoadCalculation: number
   private emailSent: boolean
-  private emailResetInterval: any
+  private emailResetInterval: NodeJS.Timeout
   private email2Sent: boolean
   private running: boolean
 
@@ -137,7 +140,7 @@ export default class Watchdog extends EventEmitter {
     )
 
     // check last immediate check time
-    const sinceLastCheck = Date.now() - this.immediateQueue.lastCheckTime
+    const sinceLastCheck = Date.now() - this.immediateQueue.getLastCheckTime()
     this.logger.debug('last immediate queue check time ' + sinceLastCheck + 'ms ago')
     if (sinceLastCheck > this.nconf.get('immediate:interval') * 3) {
       this.logger.warn(
@@ -209,13 +212,13 @@ export default class Watchdog extends EventEmitter {
 
     // get all jobs done or started in this interval and truncate them with interval boundaries before duration calculation
     let total = 0
-    let byThread = this.immediateQueue.threads.map(() => {
+    let byThread = this.immediateQueue.getThreads().map(() => {
       return 0
     })
 
-    for (const id in this.immediateQueue.jobStats) {
+    for (const id in this.immediateQueue.getJobStats()) {
       // TODO nahradit Object.assign az nebudeme pouzivat node v0.x.x
-      const stat = JSON.parse(JSON.stringify(this.immediateQueue.jobStats[id]))
+      const stat = JSON.parse(JSON.stringify(this.immediateQueue.getJobStats()[id]))
       // finished not set, use intervalTo
       if (!stat.hasOwnProperty('finished') || stat.finished === null) {
         stat.finished = intervalTo
@@ -276,10 +279,10 @@ export default class Watchdog extends EventEmitter {
         callback(
           Math.round((totalUsedSeconds / intervalDuration) * 100) / 100 +
             '/' +
-            this.immediateQueue.threads.length +
+            this.immediateQueue.getThreads().length +
             ' (' +
             Math.round(
-              (totalUsedSeconds / intervalDuration / this.immediateQueue.threads.length) * 100
+              (totalUsedSeconds / intervalDuration / this.immediateQueue.getThreads().length) * 100
             ) +
             ' %)'
         )

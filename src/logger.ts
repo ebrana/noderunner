@@ -10,12 +10,12 @@ export type Logger = Logger
 class MongoErrorCatcher extends Transport {
   public onMongoError: () => void
 
-  constructor(opts) {
+  constructor(opts: Transport.TransportStreamOptions & { onMongoError: () => void }) {
     super(opts)
     this.onMongoError = opts.onMongoError
   }
 
-  public log({ message, level }, callback) {
+  public log({ message, level }: any, callback: () => void) {
     if (this.onMongoError && level === 'error' && message === 'topology was destroyed') {
       this.onMongoError()
     }

@@ -3,13 +3,13 @@ import Job from '../job'
 import Queue from '../queue'
 
 export default class Immediate extends Queue {
-  private timeout
-  private running
-  private lastFinishedCallback
-  private lastCheckTime
-  private isStuckJobsCheckPlanned
-  private threads
-  private jobStats
+  private timeout: NodeJS.Timeout
+  private running: boolean
+  private lastFinishedCallback: () => void
+  private lastCheckTime: number
+  private isStuckJobsCheckPlanned: boolean
+  private threads: string[]
+  private jobStats: { [id: string]: { finished?: number; started: number; thread: number } }
 
   constructor(db, nconf, logger) {
     super(db, nconf, logger)
@@ -197,6 +197,14 @@ export default class Immediate extends Queue {
           return callback(docs)
         }
       })
+  }
+
+  public getJobStats() {
+    return this.jobStats
+  }
+
+  public getLastCheckTime(): number {
+    return this.lastCheckTime
   }
 
   private _removeStuckRunningJobs(evenWithoutPid) {

@@ -2,8 +2,8 @@ import Job from '../job'
 import Queue from '../queue'
 
 export default class Planned extends Queue {
-  private timeout
-  private lastCheckTime
+  private timeout: NodeJS.Timeout
+  private lastCheckTime: number
 
   constructor(db, nconf, logger) {
     super(db, nconf, logger)

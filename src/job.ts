@@ -1,6 +1,10 @@
-import chance = require('chance')
-import parser = require('cron-parser')
-import { ObjectID } from 'mongodb'
+import chance from 'chance'
+import parser from 'cron-parser'
+import { Db, ObjectID } from 'mongodb'
+import { Provider as Nconf } from 'nconf'
+import { Logger } from './logger'
+import Queue from './queue'
+import Immediate from './queue/immediate'
 
 export interface IDocument {
   _id: ObjectID
@@ -18,14 +22,14 @@ export interface IDocument {
 export default class Job {
   public document: IDocument
 
-  private db: any
-  private nconf: any
-  private logger: any
-  private queue: any
+  private db: Db
+  private nconf: Nconf
+  private logger: Logger
+  private queue: Queue
   private threadName: string
-  private threadIndex: any
+  private threadIndex: number
 
-  constructor(queue) {
+  constructor(queue: Queue) {
     this.db = queue.db
     this.nconf = queue.nconf
     this.logger = queue.logger
@@ -41,9 +45,9 @@ export default class Job {
       'THREAD ' +
         this.threadName +
         ' ' +
-        this.queue.getThreadsInfo(this.threadIndex) +
+        (this.queue as Immediate).getThreadsInfo(this.threadIndex) +
         ' running ' +
-        /*self.toString()*/ this.document._id
+        this.document._id
     )
 
     this._save(
@@ -235,7 +239,7 @@ export default class Job {
     return this.document._id + ' ' + this._buildCommand()
   }
 
-  private _finish(code, callback, fallback) {
+  private _finish(code: number, callback, fallback) {
     const finished = new Date().getTime() / 1000
 
     if (code === 0) {
@@ -244,7 +248,7 @@ export default class Job {
         'THREAD ' +
           this.threadName +
           ' ' +
-          this.queue.getThreadsInfo(this.threadIndex) +
+          (this.queue as Immediate).getThreadsInfo(this.threadIndex) +
           '  -> ' +
           this.document._id +
           ' done with SUCCESS'
@@ -255,7 +259,7 @@ export default class Job {
         'THREAD ' +
           this.threadName +
           ' ' +
-          this.queue.getThreadsInfo(this.threadIndex) +
+          (this.queue as Immediate).getThreadsInfo(this.threadIndex) +
           '  -> ' +
           this.document._id +
           ' done with ERROR, status ' +
@@ -276,9 +280,10 @@ export default class Job {
     this._save(data)
   }
 
-  private _save(data, callback?, fallback?) {
+  private _save(data, callback?: (doc: any) => void, fallback?: (err: Error) => void) {
     this.db
       .collection('immediate')
+      // @ts-ignore
       .findAndModify({ _id: this.document._id }, [], { $set: data }, { new: true }, (err, doc) => {
         if (err || doc === null) {
           this.logger.error(
@@ -322,7 +327,7 @@ export default class Job {
     }
   }
 
-  private _buildThreadName(threadIndex) {
+  private _buildThreadName(threadIndex: number) {
     let name = '#' + (threadIndex + 1)
 
     const threadNames = this.nconf.get('debug:threadNames')

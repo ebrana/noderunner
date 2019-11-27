@@ -18,8 +18,6 @@ export default class Gui {
   public logger: Logger
   public queues: IQueues
   public watchdog: Watchdog
-  public timeouts
-  public timeoutsOnEndTime
   public io
 
   public updateWaitingCount = debounce(() => {
@@ -37,14 +35,10 @@ export default class Gui {
     this.logger = logger
     this.queues = queues
     this.watchdog = watchdog
-
-    this.timeouts = {}
-    this.timeoutsOnEndTime = {}
   }
 
   public run() {
     this.io = this._initSocket()
-
     this.logger.info('socket.io listens on ' + 8001)
 
     // INCOMING EVENTS
