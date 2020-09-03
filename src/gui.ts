@@ -162,7 +162,7 @@ export default class Gui {
       filter.schedule = new RegExp(filter.schedule)
     }
 
-    this.queues[queueName].getJobs(function(data) {
+    this.queues[queueName].getJobs(data => {
       data = data.map(job => {
         job.queue = queueName
         return job
@@ -183,7 +183,7 @@ export default class Gui {
 
         case 'history':
           // prepend done jobs from immediate
-          this.queues.immediate.getJobs(function(immediateJobs) {
+          this.queues.immediate.getJobs(immediateJobs => {
             immediateJobs = immediateJobs.filter(job => {
               return job.status === 'success' || job.status === 'error'
             })
