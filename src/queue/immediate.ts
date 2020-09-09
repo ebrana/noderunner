@@ -1,4 +1,4 @@
-import isRunning from 'is-running'
+import isRunning = require('is-running')
 import Job from '../job'
 import Queue from '../queue'
 

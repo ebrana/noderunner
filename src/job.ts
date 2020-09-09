@@ -1,5 +1,5 @@
-import chance from 'chance'
-import parser from 'cron-parser'
+import * as chance from 'chance'
+import * as parser from 'cron-parser'
 import { Db, ObjectID } from 'mongodb'
 import { Provider as Nconf } from 'nconf'
 import { Logger } from './logger'
@@ -115,7 +115,7 @@ export default class Job {
         currentDate: now.valueOf() - this.nconf.get('planned:interval')
       })
       .next()
-    const nextWithoutOffset = Math.floor(next.valueOf() / 1000)
+    const nextWithoutOffset = Math.floor(next.getTime() / 1000)
     const nextWithOffset = nextWithoutOffset - offset
 
     function time(timestamp) {

@@ -3,12 +3,19 @@ import * as nconf from 'nconf'
 
 import Job, { IDocument } from '../src/job'
 import { createLogger } from '../src/logger'
+import Planned from '../src/queue/planned'
 
-nconf.file({ file: '../defaults.json' })
+nconf
+  .argv()
+  .env()
+  .file('custom', { file: 'custom/config.json' })
+  .file({ file: 'defaults.json' })
+  .defaults({ logLevel: 'error' })
 
 const logger = createLogger('debug', 'TEST')
 
-const job = new Job({ db: null, nconf, logger })
+const queue = new Planned(null, nconf, logger)
+const job = new Job(queue)
 const document: IDocument = {
   _id: new ObjectID(),
   command: 'sleep 5',
