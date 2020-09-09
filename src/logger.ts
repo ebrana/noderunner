@@ -1,10 +1,15 @@
 import * as rightpad from 'right-pad'
-import { createLogger as winstonCreateLogger, format, Logger, transports, verbose } from 'winston'
+import {
+  createLogger as winstonCreateLogger,
+  format,
+  Logger as WinstonLogger,
+  transports
+} from 'winston'
 const { combine, timestamp, label, printf, colorize } = format
 
 import * as Transport from 'winston-transport'
 
-export type Logger = Logger
+export type Logger = WinstonLogger
 
 // we want to catch specific mongo error which should be followed by reconnect (mongo client cannot reconnect by itself)
 class MongoErrorCatcher extends Transport {
