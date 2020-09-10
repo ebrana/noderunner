@@ -17,6 +17,7 @@ export interface IDocument {
   added?: number
   output?: string
   errors?: string
+  started?: number
 }
 
 export default class Job {
@@ -207,12 +208,15 @@ export default class Job {
 
   public moveToHistory() {
     const newDocument = this.document
-    this.db.collection('immediate').remove({ _id: newDocument._id })
+    this.db.collection('immediate').deleteOne({ _id: newDocument._id }).catch(error => {
+      this.logger.error(error.message, error)
+    })
     delete newDocument._id
     this.logger.silly('moveToHistory')
-    this.db.collection('history').insert(newDocument, () => {
+    this.db.collection('history').insertOne(newDocument).then(()=>{
       this.logger.silly('moveToHistory DONE')
-      // self.queue.emit('movedToHistory', {oldDocument: self.document, newDocument: newDocument});
+    }).catch(error => {
+      this.logger.error(error.message, error)
     })
   }
 
@@ -225,9 +229,11 @@ export default class Job {
     newDocument.output = ''
     newDocument.errors = ''
     this.logger.debug('rerun')
-    this.db.collection('immediate').insert(newDocument, () => {
+    this.db.collection('immediate').insertOne(newDocument).then(() => {
       this.logger.debug('rerun DONE')
       this.queue.emit('rerunDone', { oldDocument: this.document, newDocument })
+    }).catch(error => {
+      this.logger.error(error.message, error)
     })
   }
 

@@ -38,8 +38,8 @@ export default class Immediate extends Queue {
     return this
   }
 
-  public createJobStat(job, threadIndex) {
-    const id = job.document._id
+  public createJobStat(job: Job, threadIndex) {
+    const id = job.document._id.toHexString()
     if (!this.jobStats[id]) {
       this.jobStats[id] = {
         started: job.document.started,
@@ -48,8 +48,8 @@ export default class Immediate extends Queue {
     }
   }
 
-  public updateJobStat(job, threadIndex) {
-    const id = job.document._id
+  public updateJobStat(job: Job, threadIndex) {
+    const id = job.document._id.toHexString()
     // job stat not found so it was already removed - create without started
     if (!this.jobStats[id]) {
       this.jobStats[id] = {
@@ -108,8 +108,8 @@ export default class Immediate extends Queue {
     }
   }
 
-  public stop(callback) {
-    if (!this.isAnyBookedThread() && typeof callback === 'function') {
+  public stop(callback, withtBookedWaiting: boolean = true) {
+    if (!this.isAnyBookedThread() && typeof callback === 'function' && withtBookedWaiting) {
       callback()
       return
     }
@@ -183,20 +183,23 @@ export default class Immediate extends Queue {
       })
   }
 
-  public getJobs(callback, filter) {
-    this.db
-      .collection('immediate')
-      .find(filter, {
-        limit: 100,
-        sort: [['nextRun', 'asc'], ['priority', 'desc'], ['added', 'desc'], ['started', 'desc']]
-      })
-      .toArray((err, docs) => {
-        if (err) {
-          this.logger.error(err)
-        } else {
-          return callback(docs)
-        }
-      })
+  public getJobs(callback, filter: any) {
+    try {
+      this.db
+        .collection('immediate')
+        .find(filter)
+        .limit(100)
+        .sort([['nextRun', 'asc'], ['priority', 'desc'], ['added', 'desc'], ['started', 'desc']])
+        .toArray((err, docs) => {
+          if (err) {
+            this.logger.error(err)
+          } else {
+            return callback(docs)
+          }
+        })
+    } catch (error) {
+      this.logger.error(error.message, error)
+    }
   }
 
   public getJobStats() {
@@ -209,26 +212,34 @@ export default class Immediate extends Queue {
 
   private _removeStuckRunningJobs(evenWithoutPid) {
     this.logger.warn('try to move stuck running/fetched jobs - evenWithoutPid=', evenWithoutPid)
-    this.db
-      .collection('immediate')
-      .find({ $or: [{ status: 'running' }, { status: 'fetched' }] })
-      // @ts-ignore this method is missing in mongodb type, need to update mongodb to v3
-      .each((err, doc) => {
-        if (doc != null) {
-          if ((evenWithoutPid && !doc.pid) || (doc.pid && !isRunning(doc.pid))) {
-            this.db.collection('immediate').remove(doc)
-            this.logger.warn(
-              'moving stuck running/fetched job with PID and _id: ',
-              doc.pid,
-              doc._id.toString()
-            )
-            delete doc._id
-            doc.status = 'stucked'
-            doc.finished = Math.floor(new Date().getTime() / 1000)
-            this.db.collection('history').insert(doc)
+    try {
+      this.db
+        .collection('immediate')
+        .find({ $or: [{ status: 'running' }, { status: 'fetched' }] })
+        // @ts-ignore this method is missing in mongodb type, need to update mongodb to v3
+        .each((err, doc) => {
+          if (doc != null) {
+            if ((evenWithoutPid && !doc.pid) || (doc.pid && !isRunning(doc.pid))) {
+              this.db.collection('immediate').deleteOne(doc).catch(error => {
+                this.logger.error(error.message, error)
+              })
+              this.logger.warn(
+                'moving stuck running/fetched job with PID and _id: ',
+                doc.pid,
+                doc._id.toString()
+              )
+              delete doc._id
+              doc.status = 'stucked'
+              doc.finished = Math.floor(new Date().getTime() / 1000)
+              this.db.collection('history').insertOne(doc).catch(error => {
+                this.logger.error(error.message, error)
+              })
+            }
           }
-        }
-      })
+        })
+    } catch (error) {
+      this.logger.error(error.message, error)
+    }
   }
 
   private _check() {
@@ -256,7 +267,7 @@ export default class Immediate extends Queue {
     // get next job in immediate queue
     this.fetchNextJob(
       threadIndex,
-      job => {
+      (job: Job) => {
         this.rebookThread(threadIndex, job.document._id)
 
         this.emit('jobFetched', job.document)

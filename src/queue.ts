@@ -8,7 +8,7 @@ export default abstract class Queue extends EventEmitter {
   public nconf: Nconf
   public logger: Logger
 
-  constructor(db: Db, nconf: Nconf, logger: Logger) {
+  protected constructor(db: Db, nconf: Nconf, logger: Logger) {
     super()
     this.db = db
     this.nconf = nconf

@@ -69,10 +69,9 @@ function onMongoFailure() {
   planned.stop()
   history.stop()
   watchdog.stop()
-  immediate.stop(() => {
-    logger.warn('instance with broken mongo just stopped')
-    tryMongoConnection()
-  })
+  immediate.stop(null, false)
+  logger.warn('instance with broken mongo just stopped')
+  tryMongoConnection()
 }
 
 function tryMongoConnection() {

@@ -167,7 +167,9 @@ export default class Watchdog extends EventEmitter {
     const interval = this.nconf.get('watchdog:loadCheckInterval') / 1000
     threadStat.intervalTo = Date.now() / 1000
     threadStat.intervalFrom = threadStat.intervalTo - interval
-    this.db.collection('load').insert(threadStat)
+    this.db.collection('load').insertOne(threadStat).catch(error => {
+      this.logger.error(error.message, error)
+    })
     this.emit('newThreadsStat', threadStat)
 
     this.logger.verbose(
