@@ -20,7 +20,8 @@
   "history": {
     "interval": 30000,
     "maxAge": 60000,
-    "cleanHours": 24
+    "cleanHours": 12,
+    "cleanErrorsHours": 40
   },
   "watchdog": {
     "interval": 360000,

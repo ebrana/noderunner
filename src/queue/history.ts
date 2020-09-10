@@ -65,8 +65,8 @@ export default class History extends Queue {
           )
         }
 
-        // delete history items older than cleanHours
-        this.clean(this.nconf.get('history:cleanHours'))
+        // delete history items
+        this.clean()
 
         // run again after specified interval
         this.timeout = setTimeout(() => {
@@ -76,30 +76,35 @@ export default class History extends Queue {
     return this
   }
 
-  public clean(hoursCount) {
-    const lowerThanTime = Math.floor(new Date().getTime() / 1000) - hoursCount * 60 * 60
-    this.db
-      .collection('history')
-      .deleteMany({ finished: { $lt: lowerThanTime } }, (err, result) => {
-        if (err) {
-          this.logger.error('clean finished<' + lowerThanTime + ' failed', err)
-        } else {
-          this.logger.info(
-            'clean finished<' +
-              lowerThanTime +
-              ' (' +
-              this.nconf.get('history:cleanHours') +
-              ' hours) success - ' +
-              result.deletedCount +
-              ' deleted'
-          )
-          this.emit('historyCountDecreased', result.deletedCount)
-        }
-      })
+  public clean() {
+    this.cleanFlush(this.nconf.get('history:cleanHours'), {$ne: 'error'}); // clean all without errors
+    this.cleanFlush(this.nconf.get('history:cleanErrorsHours'), {$eq: 'error'}); // clean errors
   }
 
   public stop() {
     this.logger.info('stopped')
     clearTimeout(this.timeout)
+  }
+
+  protected cleanFlush(hoursCount: number, statusFilter: any) {
+    const lowerThanTime = Math.floor(new Date().getTime() / 1000) - hoursCount * 60 * 60
+    this.db
+      .collection('history')
+      .deleteMany({ finished: { $lt: lowerThanTime }, status: statusFilter }, (err, result) => {
+        if (err) {
+          this.logger.error('clean finished<' + lowerThanTime + ' failed', err)
+        } else {
+          this.logger.info(
+            'clean finished<' +
+            lowerThanTime +
+            ' (' +
+            this.nconf.get('history:cleanHours') +
+            ' hours) success - ' +
+            result.deletedCount +
+            ' deleted'
+          )
+          this.emit('historyCountDecreased', result.deletedCount)
+        }
+      })
   }
 }
