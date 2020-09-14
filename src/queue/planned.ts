@@ -119,7 +119,7 @@ export default class Planned extends Queue {
             }
           } else {
             this.logger.verbose(
-              'no planed job, sleep for ' + this.nconf.get('planned:interval') / 1000 + 's'
+              'no planned job, sleep for ' + this.nconf.get('planned:interval') / 1000 + 's'
             )
           }
 
