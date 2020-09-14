@@ -17,6 +17,7 @@ export default class Watchdog extends EventEmitter {
   private nconf: Nconf
   private logger: Logger
   private interval: NodeJS.Timeout
+  private intervalThreadeStats: NodeJS.Timeout
   private immediateQueue: Immediate
   private badSamplesLimit: number
   private badSamplesCount: number
@@ -56,7 +57,7 @@ export default class Watchdog extends EventEmitter {
     }, this.nconf.get('watchdog:interval'))
 
     // calculate load
-    this.interval = setInterval(() => {
+    this.intervalThreadeStats = setInterval(() => {
       this.runThreadsStatsCheck()
     }, this.nconf.get('watchdog:loadCheckInterval'))
 
@@ -84,6 +85,7 @@ export default class Watchdog extends EventEmitter {
     this.logger.info('stopped')
     this.running = false
     clearInterval(this.interval)
+    clearInterval(this.intervalThreadeStats)
     clearInterval(this.emailResetInterval)
   }
 
