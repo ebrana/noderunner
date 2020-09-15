@@ -189,22 +189,24 @@ export default class Watchdog extends EventEmitter {
     const nodemailer = require('nodemailer')
     const smtpTransport = require('nodemailer-smtp-transport')
 
-    nodemailer.createTransport(smtpTransport({ host: 'mail.ebrana.cz', port: 25 })).sendMail(
-      {
-        from: this.nconf.get('watchdog:email:from'),
-        subject: 'NodeRunner watchdog - ' + os.hostname(),
-        text,
-        to: this.nconf.get('watchdog:email:to')
-      },
-      (error, info) => {
-        if (error) {
-          this.logger.error('cannot send warning email', error)
-        } else {
-          cb(info)
-          this.logger.verbose('warning email sent ', info.response)
+    if (this.nconf.get('watchdog:email') !== null) {
+      nodemailer.createTransport(smtpTransport({ host: 'mail.ebrana.cz', port: 25 })).sendMail(
+        {
+          from: this.nconf.get('watchdog:email:from'),
+          subject: 'NodeRunner watchdog - ' + os.hostname(),
+          text,
+          to: this.nconf.get('watchdog:email:to')
+        },
+        (error, info) => {
+          if (error) {
+            this.logger.error('cannot send warning email', error)
+          } else {
+            cb(info)
+            this.logger.verbose('warning email sent ', info.response)
+          }
         }
-      }
-    )
+      )
+    }
   }
 
   private calculateThreadsStat(): IThreadStat {
