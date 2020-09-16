@@ -141,24 +141,26 @@ export default class Watchdog extends EventEmitter {
       }
     )
 
-    // check last immediate check time
-    const sinceLastCheck = Date.now() - this.immediateQueue.getLastCheckTime()
-    this.logger.debug('last immediate queue check time ' + sinceLastCheck + 'ms ago')
-    if (sinceLastCheck > this.nconf.get('immediate:interval') * 3) {
-      this.logger.warn(
-        'Time since last immediate queue check is more than 3 times greater than set check interval!'
-      )
-      if (!this.email2Sent) {
-        this.sendEmail(
-          'Time since last immediate queue check is more than 3 times greater than set check interval (' +
+    if (this.immediateQueue.getLastCheckTime() !== null) { // check immediate is running
+      // check last immediate check time
+      const sinceLastCheck = Date.now() - this.immediateQueue.getLastCheckTime()
+      this.logger.debug('last immediate queue check time ' + sinceLastCheck + 'ms ago')
+      if (sinceLastCheck > this.nconf.get('immediate:interval') * 3) {
+        this.logger.warn(
+          'Time since last immediate queue check is more than 3 times greater than set check interval!'
+        )
+        if (!this.email2Sent) {
+          this.sendEmail(
+            'Time since last immediate queue check is more than 3 times greater than set check interval (' +
             sinceLastCheck +
             '>' +
             this.nconf.get('immediate:interval') * 3 +
             ')! Immediate queue is probably not working.',
-          () => {
-            this.email2Sent = true
-          }
-        )
+            () => {
+              this.email2Sent = true
+            }
+          )
+        }
       }
     }
   }
