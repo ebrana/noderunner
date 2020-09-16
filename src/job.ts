@@ -1,4 +1,5 @@
 import * as chance from 'chance'
+import * as _ from 'lodash'
 import * as parser from 'cron-parser'
 import { Db, ObjectID } from 'mongodb'
 import { Provider as Nconf } from 'nconf'
@@ -94,35 +95,7 @@ export default class Job {
 
   // parameters and all calculations are in seconds
   public isDue(checkIntervalStart, checkIntervalEnd) {
-    // load distribution algorithm - for example when using */10 * * * * schedule, every job should run in any minute in interval 0..9 (but every job every time with the same offset - derieved from its ID)
-    let offset
-    const parsedSchedule = /\*\/(\d*)( \*){4}/.exec(this.document.schedule)
-    if (parsedSchedule && parsedSchedule[1]) {
-      const minutesInterval = parseInt(parsedSchedule[1], 10)
-
-      // find random number derived from job id in interval (0..minutesInterval)
-      const randomGenerator = new chance(this.document._id.toString())
-      offset = Math.round(
-        randomGenerator.integer({ min: 0, max: (minutesInterval - 1) * 100 }) * 0.6
-      )
-    } else {
-      offset = 0
-    }
-
-    // next() returns next due time, so we need to move time back by one check interval to get current due time
-    const now = new Date()
-    const next = parser
-      .parseExpression(this.document.schedule, {
-        currentDate: now.valueOf() - this.nconf.get('planned:interval')
-      })
-      .next()
-    const nextWithoutOffset = Math.floor(next.getTime() / 1000)
-    const nextWithOffset = nextWithoutOffset - offset
-
-    function time(timestamp) {
-      const date = new Date(timestamp * 1000)
-      return date.getHours() + ':' + date.getMinutes() + ':' + date.getSeconds()
-    }
+    const { nextWithOffset, nextWithoutOffset, offset } = this.getNextRunTime()
 
     if (checkIntervalStart < nextWithOffset) {
       if (nextWithOffset <= checkIntervalEnd) {
@@ -192,8 +165,37 @@ export default class Job {
     return checkIntervalStart < nextWithOffset && nextWithOffset <= checkIntervalEnd
   }
 
+  public getNextRunTime() {
+    // load distribution algorithm - for example when using */10 * * * * schedule, every job should run in any minute in interval 0..9 (but every job every time with the same offset - derieved from its ID)
+    let offset
+    const parsedSchedule = /\*\/(\d*)( \*){4}/.exec(this.document.schedule)
+    if (parsedSchedule && parsedSchedule[1]) {
+      const minutesInterval = parseInt(parsedSchedule[1], 10)
+
+      // find random number derived from job id in interval (0..minutesInterval)
+      const randomGenerator = new chance(this.document._id.toString())
+      offset = Math.round(
+        randomGenerator.integer({ min: 0, max: (minutesInterval - 1) * 100 }) * 0.6
+      )
+    } else {
+      offset = 0
+    }
+
+    // next() returns next due time, so we need to move time back by one check interval to get current due time
+    const now = new Date(Date.now())
+    const next = parser
+      .parseExpression(this.document.schedule, {
+        currentDate: now.valueOf() - this.nconf.get('planned:interval')
+      })
+      .next()
+    const nextWithoutOffset = Math.floor(next.getTime() / 1000)
+    const nextWithOffset = nextWithoutOffset - offset
+
+    return { nextWithOffset, nextWithoutOffset, offset }
+  }
+
   public copyToImmediate(callback) {
-    const newDocument = this.document
+    const newDocument = _.cloneDeep(this.document)
     newDocument.sourceId = newDocument._id
     delete newDocument._id
     newDocument.status = this.nconf.get('statusAlias:planned')
@@ -208,16 +210,23 @@ export default class Job {
 
   public moveToHistory() {
     const newDocument = this.document
-    this.db.collection('immediate').deleteOne({ _id: newDocument._id }).catch(error => {
-      this.logger.error(error.message, error)
-    })
+    this.db
+      .collection('immediate')
+      .deleteOne({ _id: newDocument._id })
+      .catch(error => {
+        this.logger.error(error.message, error)
+      })
     delete newDocument._id
     this.logger.silly('moveToHistory')
-    this.db.collection('history').insertOne(newDocument).then(()=>{
-      this.logger.silly('moveToHistory DONE')
-    }).catch(error => {
-      this.logger.error(error.message, error)
-    })
+    this.db
+      .collection('history')
+      .insertOne(newDocument)
+      .then(() => {
+        this.logger.silly('moveToHistory DONE')
+      })
+      .catch(error => {
+        this.logger.error(error.message, error)
+      })
   }
 
   public rerun() {
@@ -229,12 +238,16 @@ export default class Job {
     newDocument.output = ''
     newDocument.errors = ''
     this.logger.debug('rerun')
-    this.db.collection('immediate').insertOne(newDocument).then(() => {
-      this.logger.debug('rerun DONE')
-      this.queue.emit('rerunDone', { oldDocument: this.document, newDocument })
-    }).catch(error => {
-      this.logger.error(error.message, error)
-    })
+    this.db
+      .collection('immediate')
+      .insertOne(newDocument)
+      .then(() => {
+        this.logger.debug('rerun DONE')
+        this.queue.emit('rerunDone', { oldDocument: this.document, newDocument })
+      })
+      .catch(error => {
+        this.logger.error(error.message, error)
+      })
   }
 
   public initByDocument(doc) {
@@ -347,4 +360,9 @@ export default class Job {
   private _hasProperty(prop) {
     return typeof this.document[prop] !== 'undefined' && this.document[prop] !== null
   }
+}
+
+function time(timestamp) {
+  const date = new Date(timestamp * 1000)
+  return date.getHours() + ':' + date.getMinutes() + ':' + date.getSeconds()
 }

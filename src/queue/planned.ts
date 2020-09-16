@@ -13,7 +13,8 @@ export default class Planned extends Queue {
   public getJobs(callback, filter) {
     this.db
       .collection('planned')
-      .find(filter).limit(100)
+      .find(filter)
+      .limit(100)
       .toArray((err, docs) => {
         if (err) {
           this.logger.error(err)
@@ -24,11 +25,15 @@ export default class Planned extends Queue {
   }
 
   public getJobsCount(callback) {
-    this.db.collection('planned').count({}).then(count => {
-      callback(count)
-    }).catch(error => {
-      this.logger.error(error.message, error)
-    })
+    this.db
+      .collection('planned')
+      .count({})
+      .then(count => {
+        callback(count)
+      })
+      .catch(error => {
+        this.logger.error(error.message, error)
+      })
   }
 
   public checkRunningJobBySource(id, callback) {
@@ -67,7 +72,10 @@ export default class Planned extends Queue {
               job.initByDocument(doc)
 
               if (
-                job.isDue(Math.floor(checkIntervalStart / 1000), Math.floor(checkIntervalEnd / 1000))
+                job.isDue(
+                  Math.floor(checkIntervalStart / 1000),
+                  Math.floor(checkIntervalEnd / 1000)
+                )
               ) {
                 // concurrencyMode skip runs planned job only if last instance is not running
                 switch (doc.concurrencyMode) {
@@ -77,8 +85,8 @@ export default class Planned extends Queue {
                       if (isRunning) {
                         this.logger.warn(
                           'job ' +
-                          doc._id +
-                          ' skipped due to concurrence mode (same job already running)'
+                            doc._id +
+                            ' skipped due to concurrence mode (same job already running)'
                         )
                       } else {
                         this.logger.debug('moving job ' + job.document._id /*job.toString()*/)
