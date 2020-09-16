@@ -91,7 +91,7 @@ export default class Immediate extends Queue {
           (err, doc) => {
             if (err) {
               this.logger.error('cannot load job from queue', err)
-              fallback(false)
+              fallback(err)
             } else if (!doc.value) {
               // no next job found in immediate queue
               fallback(false)
@@ -108,8 +108,8 @@ export default class Immediate extends Queue {
     }
   }
 
-  public stop(callback, withtBookedWaiting: boolean = true) {
-    if (!this.isAnyBookedThread() && typeof callback === 'function' && withtBookedWaiting) {
+  public stop(callback, withBookedWaiting: boolean = true) {
+    if (!this.isAnyBookedThread() && typeof callback === 'function' && withBookedWaiting) {
       callback()
       return
     }
@@ -117,6 +117,7 @@ export default class Immediate extends Queue {
     this.lastFinishedCallback = callback
     this.logger.info('stopped')
     this.running = false
+    this.lastCheckTime = null
     clearTimeout(this.timeout)
   }
 
@@ -284,7 +285,9 @@ export default class Immediate extends Queue {
             this.emit('jobCompleted', job.document)
             this.emit('historyCountIncreased', 1)
 
-            this._check()
+            if (this.running === true) { // job completed but queue is stopped, not plann next check
+              this._check()
+            }
           },
           () => {
             // cannot save document, try wait for another round
@@ -312,9 +315,11 @@ export default class Immediate extends Queue {
             }
 
             clearTimeout(this.timeout)
-            this.timeout = setTimeout(() => {
-              this._check()
-            }, this.nconf.get('immediate:interval'))
+            if (this.running === true) {
+              this.timeout = setTimeout(() => {
+                this._check()
+              }, this.nconf.get('immediate:interval'))
+            }
           },
           document => {
             this.emit('jobStarted', document)
