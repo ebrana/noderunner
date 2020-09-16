@@ -2,7 +2,7 @@
 Description=Daemon for running jobs from Mongo queue
 
 [Service]
-ExecStart=/usr/bin/node noderunner.js
+ExecStart=/usr/bin/n use 10.16.2 built/index.js
 WorkingDirectory=/home/noderunner
 
 # try to restart service 5 times with 20s delay, then fail
