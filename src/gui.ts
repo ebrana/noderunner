@@ -74,6 +74,15 @@ export default class Gui {
         this.emit(socket, 'plannedCount', cnt)
       })
 
+      socket.on('addThread', () => {
+        this.nconf.set('immediate:maxThreadsCount', this.nconf.get('immediate:maxThreadsCount') + 1)
+        this.nconf.save(() => {
+          this.logger.info('save config')
+          this.queues.immediate.addThread()
+          this.emit(socket, 'threadsCount', this.queues.immediate.getThreads().length)
+        })
+      })
+
       socket.on('requestQueueData', params => {
         this.logger.verbose('request queue data', params)
         try {
