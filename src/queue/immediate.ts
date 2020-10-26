@@ -195,6 +195,9 @@ export default class Immediate extends Queue {
           if (err) {
             this.logger.error(err)
           } else {
+            docs.forEach((value, index) => {
+              docs[index].runningTime = (new Date().getTime() / 1000) - docs[index].started;
+            })
             return callback(docs)
           }
         })
