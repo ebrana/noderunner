@@ -22,12 +22,27 @@ export default class Immediate extends Queue {
 
     // entry for every thread with null value when free and non-null ('booked' or job _id when currently used)
     this.threads = []
-    for (let i = 0; i < nconf.get('immediate:maxThreadsCount'); i++) {
+    for (let i = 0; i < nconf.get('immediate:threads').length; i++) {
       this.threads[i] = null
     }
 
     // store job timing stats (stared, finished, duration) for analysis in watchdog queue
     this.jobStats = {}
+  }
+
+  public addThread() {
+    this.threads.push(null);
+  }
+
+  public delThread(index: number, callback) {
+    if (this.threads[index] === null) {
+      this.threads.splice(index, 1);
+      callback();
+    } else {
+      setTimeout(()=>{
+        this.delThread(index, callback)
+      }, 2000, index, callback)
+    }
   }
 
   public run() {

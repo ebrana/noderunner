@@ -1,6 +1,6 @@
 import * as chance from 'chance'
-import * as _ from 'lodash'
 import * as parser from 'cron-parser'
+import * as _ from 'lodash'
 import { Db, ObjectID } from 'mongodb'
 import { Provider as Nconf } from 'nconf'
 import { Logger } from './logger'
