@@ -2,13 +2,24 @@ import * as nconf from 'nconf'
 
 import Job from '../job'
 import { createLogger } from '../logger'
+import Immediate from '../queue/immediate'
 import Planned from '../queue/planned'
 import { mockDateNow } from '../test'
+
+jest.mock('mongodb')
+
+const findAndModify = jest.fn()
+const db = {
+  collection: jest.fn().mockReturnValue({
+    findAndModify,
+  })
+}
 
 nconf.file({ file: 'defaults.json' })
 
 const logger = createLogger('error', 'TEST')
 const queue = new Planned(null, nconf, logger)
+const immediateQueue = new Immediate(db, nconf, logger)
 
 const jobWithStarSchedule = new Job(queue)
 jobWithStarSchedule.initByDocument({
@@ -20,6 +31,13 @@ const jobWithRegularSchedule = new Job(queue)
 jobWithRegularSchedule.initByDocument({
   _id: '5f61d86725e34d7a8ba9ca9b',
   schedule: '30 * * * *'
+})
+
+const jobForRunTest = new Job(immediateQueue)
+jobForRunTest.initByDocument({
+  _id: '5f61d86725e34d7a8ba9ca9b',
+  command: 'sleep 10',
+  job: 'sleep 10',
 })
 
 describe('Job.nextRunTime', () => {
@@ -92,5 +110,16 @@ describe('Job.isDue', () => {
       checkIntervalEnd.getTime() / 1000
     )
     expect(isDue).toEqual(false)
+  })
+})
+
+describe('Job.run', () => {
+  it('running...', () => {
+    jobForRunTest.run((code) => {
+      // check, ze se metoda findAndModify zavolala jen 1x
+      expect(findAndModify).toHaveBeenCalledTimes(1)
+      // navratovy code po vykonanem sleep je 0
+      expect(code).toEqual(0)
+    }, undefined, undefined)
   })
 })

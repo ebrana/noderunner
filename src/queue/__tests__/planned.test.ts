@@ -1,6 +1,6 @@
 import * as nconf from 'nconf'
-import Planned from '../planned'
 import { createLogger } from '../../logger'
+import Planned from '../planned'
 
 jest.mock('mongodb')
 
