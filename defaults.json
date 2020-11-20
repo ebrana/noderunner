@@ -1,43 +1,91 @@
 {
-  "mongoDSN": "mongodb://localhost:27017/queuerunner",
-  "logLevel": "info",
-  "sudo": {
-    "user": "nginx",
-    "group": "nginx"
-  },
-  "immediate": {
-    "interval": 5000,
-    "maxThreadsCount": 3
-  },
-  "gui": {
-    "enable": false,
-    "batchTimeout": 500,
-    "threadsStatsLength": 18000000
-  },
-  "planned": {
-    "interval": 20000
-  },
-  "history": {
-    "interval": 30000,
-    "maxAge": 60000,
-    "cleanHours": 12,
-    "cleanErrorsHours": 40
-  },
-  "watchdog": {
-    "interval": 360000,
-    "loadCheckInterval": 10000,
-    "badSamplesLimit": 15,
-    "email": {
-      "from": "noderunner@ebrana.cz",
-      "to": "dvorak@ebrana.cz"
+    "mongoDSN": "mongodb://localhost:27017/queuerunner",
+    "logLevel": "info",
+    "sudo": {
+        "user": "nginx",
+        "group": "nginx"
+    },
+    "immediate": {
+        "interval": 5000,
+        "maxThreadsCount": 3,
+        "threads": [
+            {
+                "include": [],
+                "exclude": [],
+                "implementation": null
+            },
+            {
+                "include": [],
+                "exclude": [],
+                "implementation": null
+            },
+            {
+                "include": [],
+                "exclude": [],
+                "implementation": null
+            }
+        ]
+    },
+    "gui": {
+        "enable": false,
+        "batchTimeout": 500,
+        "threadsStatsLength": 18000000
+    },
+    "planned": {
+        "interval": 20000
+    },
+    "history": {
+        "interval": 30000,
+        "maxAge": 60000,
+        "cleanHours": 12,
+        "cleanErrorsHours": 40
+    },
+    "watchdog": {
+        "interval": 360000,
+        "loadCheckInterval": 10000,
+        "badSamplesLimit": 15,
+        "email": {
+            "from": "noderunner@ebrana.cz",
+            "to": "dvorak@ebrana.cz"
+        }
+    },
+    "statusAlias": {
+        "planned": "planed",
+        "fetched": "fetched",
+        "running": "running",
+        "success": "success",
+        "error": "error"
+    },
+    "gracefulShutdownTimeout": 30000,
+    "threadsSettingSchema": {
+        "title": "threads settings schema v1",
+        "type": "array",
+        "additionalProperties": false,
+        "minItems": 3,
+        "items": {
+            "type": "object",
+            "required": [
+                "include",
+                "exclude",
+                "implementation"
+            ],
+            "properties": {
+                "include": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "exclude": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "implementation": {
+                    "type": ["string", "null"]
+                }
+            }
+        }
     }
-  },
-  "statusAlias": {
-    "planned": "planed",
-    "fetched": "fetched",
-    "running": "running",
-    "success": "success",
-    "error": "error"
-  },
-  "gracefulShutdownTimeout": 30000
 }

@@ -29,12 +29,15 @@ export default class Gui {
     }
   }, 3000)
 
-  constructor(db, nconf, logger, queues, watchdog) {
+  private readonly restartCalback: CallableFunction
+
+  constructor(db, nconf, logger, queues, watchdog, restartCalback) {
     this.db = db
     this.nconf = nconf
     this.logger = logger
     this.queues = queues
     this.watchdog = watchdog
+    this.restartCalback = restartCalback;
   }
 
   public run() {
@@ -80,6 +83,16 @@ export default class Gui {
           this.logger.info('save config')
           this.queues.immediate.addThread()
           this.emit(socket, 'threadsCount', this.queues.immediate.getThreads().length)
+        })
+      })
+
+      socket.on('delThread', (index) => {
+        this.nconf.set('immediate:maxThreadsCount', this.nconf.get('immediate:maxThreadsCount') - 1)
+        this.nconf.save(() => {
+          this.logger.info('save config ' + index)
+          this.queues.immediate.delThread(index, () => {
+            this.emit(socket, 'threadsCount', this.queues.immediate.getThreads().length)
+          })
         })
       })
 
@@ -220,9 +233,11 @@ export default class Gui {
     socket.emit(action, params)
   }
 
-  public stop() {
-    this.io.close()
-    this.logger.info('stopped')
+  public stop(callback: () => void) {
+    this.io.close(() => {
+      this.logger.info('stopped')
+      callback()
+    })
   }
 
   private _initSocket() {

@@ -8,8 +8,8 @@ export default class Immediate extends Queue {
   private lastFinishedCallback: () => void
   private lastCheckTime: number
   private isStuckJobsCheckPlanned: boolean
-  private threads: string[]
-  private jobStats: { [id: string]: { finished?: number; started: number; thread: number } }
+  private readonly threads: string[]
+  private readonly jobStats: { [id: string]: { finished?: number; started: number; thread: number } }
 
   constructor(db, nconf, logger) {
     super(db, nconf, logger)
@@ -85,6 +85,134 @@ export default class Immediate extends Queue {
       }
     }
     return null
+  }
+
+  public bookThreadByIndexes(indexes: number[]) {
+    for (const item of indexes) {
+      if (this.threads[item] === null) {
+        this.logger.silly('booked thread ' + item)
+        this.threads[item] = 'booked'
+        return item;
+      }
+    }
+    return null
+  }
+
+  public getThreadsByCriteriaTags(threadeIndex, configuration, tags: string[], host) {
+    let include = false
+    let exclude = false
+    // testujeme stitky pokud jsou nastaveny
+    if (tags && tags.length > 0) {
+      for (const item in tags) {
+        if (configuration[threadeIndex].include.includes(tags[item])) {
+          include = true
+        }
+        if (configuration[threadeIndex].exclude.includes(tags[item])) {
+          exclude = true
+          break
+        }
+      }
+    }
+
+    if ((include === true && exclude === false) ||
+      ((tags === undefined || tags.length === 0) && configuration[threadeIndex].include.length === 0) ||
+      (configuration[threadeIndex].include.length === 0 && exclude === false &&
+        (configuration[threadeIndex].implementation === null || configuration[threadeIndex].implementation === host))
+    ) {
+      // vlozeno pres shodu v include a zaroven neni vylouceno pres exclude
+      // pokud proces nema stitek a vlakno nema nastaveno co do nej muze pres include
+      // pokud vlakno nedefinuje include a proces nevypadne pres exclude a shoduje se host nebo neni definovan
+      return threadeIndex
+    }
+
+    return null
+  }
+
+  public getThreadsByCriteria(host, tags: string[]) {
+    const threads = []
+    const configuration = this.nconf.get('immediate:threads')
+    for (let i = 0; i < configuration.length; i++) {
+      const threadeIndex = this.getThreadsByCriteriaTags(i, configuration, tags, host)
+      if (threadeIndex !== null) {
+        threads.push(threadeIndex);
+      }
+    }
+
+    return threads
+  }
+
+  public bookThreadWithTags(callback, fallback) {
+    try {
+      this.db
+        .collection('immediate')
+        .findOne(
+          { status: this.nconf.get('statusAlias:planned') },
+          { sort: [['nextRun', 'asc'], ['priority', 'desc'], ['added', 'desc'], ['started', 'desc']]},
+          (err, doc) => {
+            if (err) {
+              this.logger.error('cannot load job from queue', err)
+              fallback(err)
+            } else if (doc === null) {
+              // no next job found in immediate queue
+              fallback(false, null)
+            } else {
+              // najit vhodne vlakno podle tagu
+              const threadeIndexes = this.getThreadsByCriteria(doc.host, doc.tags)
+              if (threadeIndexes.length === 0) { // job can never be started
+                this.logger.error('The job can never be started: ' + doc._id.toString())
+                // konfigurace threadu je takova, ze by se tento job nikdy nespustil
+                fallback(false, null)
+              } else {
+                const threadeIndex = this.bookThreadByIndexes(threadeIndexes);
+                if (threadeIndex !== null) {
+                  this.fetchNextJobByDocument(threadeIndex, doc, callback, fallback)
+                } else {
+                  this.logger.warn('Job cant find free thread: ' + doc._id.toString())
+                  fallback(false, null)
+                }
+              }
+            }
+          }
+        )
+    } catch (e) {
+      fallback(e, null)
+    }
+  }
+
+  public fetchNextJobByDocument(threadIndex, document, callback, fallback) {
+    const changes = {
+      started: new Date().getTime() / 1000,
+      status: this.nconf.get('statusAlias:fetched'),
+      thread: threadIndex
+    }
+
+    try {
+      this.db
+        .collection('immediate')
+        // @ts-ignore this method is missing in mongodb type, need to update mongodb to v3
+        .findAndModify(
+          { _id: document._id },
+          [['nextRun', 'asc'], ['priority', 'desc'], ['added', 'desc'], ['started', 'desc']],
+          { $set: changes },
+          { new: true },
+          (err, doc) => {
+            if (err) {
+              this.logger.error('cannot load job from queue', err)
+              fallback(err, threadIndex)
+            } else if (!doc.value) {
+              // no next job found in immediate queue
+              fallback(false, threadIndex)
+            } else {
+              // next job found in immediate queue
+              const job = new Job(this)
+              job.initByDocument(doc.value)
+              callback(job, threadIndex)
+            }
+          }
+        )
+    } catch (e) {
+      fallback(e, threadIndex)
+    }
   }
 
   public fetchNextJob(threadIndex, callback, fallback) {
@@ -274,19 +402,7 @@ export default class Immediate extends Queue {
       return
     }
 
-    // try to book any free thread
-    const threadIndex = this.bookThread()
-
-    // if available - do nothing - _check will be called in thread end callback
-    if (threadIndex === null) {
-      this.logger.debug('no available thread, waiting...')
-      return
-    }
-
-    // get next job in immediate queue
-    this.fetchNextJob(
-      threadIndex,
-      (job: Job) => {
+    this.bookThreadWithTags((job: Job, threadIndex) => {
         this.rebookThread(threadIndex, job.document._id)
 
         this.emit('jobFetched', job.document)
@@ -315,8 +431,8 @@ export default class Immediate extends Queue {
 
             this.logger.error(
               'error during job run, sleep for ' +
-                this.nconf.get('immediate:interval') / 1000 +
-                ' secs',
+              this.nconf.get('immediate:interval') / 1000 +
+              ' secs',
               job.document
             )
 
@@ -347,9 +463,11 @@ export default class Immediate extends Queue {
         // job done - try fetch and run another immediately without wait
         this._check()
       },
-      e => {
-        // no job to fetch or error
-        this.releaseThread(threadIndex)
+      (e, threadIndex) => {
+        if (threadIndex !== null) {
+          // no job to fetch or error
+          this.releaseThread(threadIndex)
+        }
 
         if (e) {
           this.logger.error(
@@ -365,7 +483,6 @@ export default class Immediate extends Queue {
         this.timeout = setTimeout(() => {
           this._check()
         }, this.nconf.get('immediate:interval'))
-      }
-    )
+      })
   }
 }

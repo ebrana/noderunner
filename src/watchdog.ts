@@ -64,7 +64,7 @@ export default class Watchdog extends EventEmitter {
     // send info email max once per hour
     this.emailResetInterval = setInterval(() => {
       this.emailSent = false
-      this.email2Sent = true
+      this.email2Sent = false
     }, 60 * 60 * 1000)
 
     return this
