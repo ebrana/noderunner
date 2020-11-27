@@ -1,0 +1,14 @@
+{
+  "mongoDSN": "mongodb://test:test@mongo:27017/noderuner",
+  "logLevel": "debug",
+  "sudo": {
+    "user": "",
+    "group": ""
+  },
+  "gui": {
+    "enable": true,
+    "batchTimeout": 500,
+    "threadsStatsLength": 18000000
+  }
+}
+
