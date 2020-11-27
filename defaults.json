@@ -7,7 +7,24 @@
   },
   "immediate": {
     "interval": 5000,
-    "maxThreadsCount": 3
+    "maxThreadsCount": 3,
+    "threads": [
+      {
+        "include": [],
+        "exclude": [],
+        "implementation": null
+      },
+      {
+        "include": [],
+        "exclude": [],
+        "implementation": null
+      },
+      {
+        "include": [],
+        "exclude": [],
+        "implementation": null
+      }
+    ]
   },
   "gui": {
     "enable": false,

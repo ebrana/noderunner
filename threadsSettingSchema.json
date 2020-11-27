@@ -1,0 +1,34 @@
+{
+    "title": "threads settings schema v1",
+    "type": "array",
+    "additionalProperties": false,
+    "minItems": 3,
+    "items": {
+        "type": "object",
+        "required": [
+            "include",
+            "exclude",
+            "implementation"
+        ],
+        "properties": {
+            "include": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "exclude": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "implementation": {
+                "type": [
+                    "string",
+                    "null"
+                ]
+            }
+        }
+    }
+}
