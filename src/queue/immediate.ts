@@ -98,16 +98,16 @@ export default class Immediate extends Queue {
     return null
   }
 
-  public getThreadsByCriteriaTags(threadeIndex, configuration, tags: string[], host) {
+  public getThreadsByCriteriaTags(threadIndex, configuration, tags: string[], host) {
     let include = false
     let exclude = false
     // testujeme stitky pokud jsou nastaveny
     if (tags && tags.length > 0) {
       for (const item in tags) {
-        if (configuration[threadeIndex].include.includes(tags[item])) {
+        if (configuration[threadIndex].include.includes(tags[item])) {
           include = true
         }
-        if (configuration[threadeIndex].exclude.includes(tags[item])) {
+        if (configuration[threadIndex].exclude.includes(tags[item])) {
           exclude = true
           break
         }
@@ -115,30 +115,26 @@ export default class Immediate extends Queue {
     }
 
     if ((include === true && exclude === false) ||
-      ((tags === undefined || tags.length === 0) && configuration[threadeIndex].include.length === 0) ||
-      (configuration[threadeIndex].include.length === 0 && exclude === false &&
-        (configuration[threadeIndex].implementation === null || configuration[threadeIndex].implementation === host))
+      ((tags === undefined || tags.length === 0) && configuration[threadIndex].include.length === 0) ||
+      (configuration[threadIndex].include.length === 0 && exclude === false &&
+        (configuration[threadIndex].implementation === null || configuration[threadIndex].implementation === host))
     ) {
       // vlozeno pres shodu v include a zaroven neni vylouceno pres exclude
       // pokud proces nema stitek a vlakno nema nastaveno co do nej muze pres include
       // pokud vlakno nedefinuje include a proces nevypadne pres exclude a shoduje se host nebo neni definovan
-      return threadeIndex
+      return threadIndex
     }
 
     return null
   }
 
   public getThreadsByCriteria(host, tags: string[]) {
-    const threads = []
     const configuration = this.nconf.get('immediate:threads')
-    for (let i = 0; i < configuration.length; i++) {
-      const threadeIndex = this.getThreadsByCriteriaTags(i, configuration, tags, host)
-      if (threadeIndex !== null) {
-        threads.push(threadeIndex);
-      }
-    }
-
-    return threads
+    return configuration.map((value, i) => {
+      return this.getThreadsByCriteriaTags(i, configuration, tags, host)
+    }).filter((index) => {
+      return index !== null
+    });
   }
 
   public bookThreadWithTags(callback, fallback) {

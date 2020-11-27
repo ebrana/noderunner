@@ -2,6 +2,7 @@ import { MongoClient, MongoClientOptions } from 'mongodb'
 import * as nconf from 'nconf'
 
 import { Validator } from 'jsonschema'
+import threadsSettingSchema = require("../threadsSettingSchema.json");
 import Gui from './gui'
 import { createLogger } from './logger'
 import HistoryQueue from './queue/history'
@@ -32,7 +33,7 @@ const historyLogger = createLoggerForNamespace('history')
 const watchdogLogger = createLoggerForNamespace('watchdog')
 const guiLogger = createLoggerForNamespace('gui')
 
-const res = schemaValidator.validate(nconf.get('immediate:threads'), nconf.get('threadsSettingSchema'));
+const res = schemaValidator.validate(nconf.get('immediate:threads'), threadsSettingSchema);
 
 if (res.valid === false) {
   logger.error(res.toString());
