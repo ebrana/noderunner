@@ -138,6 +138,7 @@ function tryMongoConnection() {
             guiLogger,
             { immediate, planned, history },
             watchdog,
+            schemaValidator,
             reload
           ).run()
         }

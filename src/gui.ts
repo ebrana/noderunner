@@ -1,5 +1,8 @@
+import { Validator } from 'jsonschema'
 import { debounce } from 'lodash'
+import * as nconf from 'nconf'
 import * as Nconf from 'nconf'
+import threadsSettingSchema = require("../threadsSettingSchema.json");
 import { Logger } from './logger'
 import History from './queue/history'
 import Immediate from './queue/immediate'
@@ -18,6 +21,7 @@ export default class Gui {
   public logger: Logger
   public queues: IQueues
   public watchdog: Watchdog
+  public schemaValidator: Validator
   public io
 
   public updateWaitingCount = debounce(() => {
@@ -31,13 +35,14 @@ export default class Gui {
 
   private readonly restartCalback: CallableFunction
 
-  constructor(db, nconf, logger, queues, watchdog, restartCalback) {
+  constructor(db, nconfig, logger, queues, watchdog, schemaValidator, restartCalback) {
     this.db = db
-    this.nconf = nconf
+    this.nconf = nconfig
     this.logger = logger
     this.queues = queues
     this.watchdog = watchdog
     this.restartCalback = restartCalback;
+    this.schemaValidator = schemaValidator;
   }
 
   public run() {
@@ -64,6 +69,7 @@ export default class Gui {
       })
 
       this.emit(socket, 'threadsCount', this.queues.immediate.getThreads().length)
+      this.emit(socket, 'threadsSettings', nconf.get('immediate:threads'))
 
       this.queues.history.getJobsCount(cnt => {
         this.emit(socket, 'historyCount', cnt)
@@ -77,23 +83,51 @@ export default class Gui {
         this.emit(socket, 'plannedCount', cnt)
       })
 
-      socket.on('addThread', () => {
-        this.nconf.set('immediate:maxThreadsCount', this.nconf.get('immediate:maxThreadsCount') + 1)
-        this.nconf.save(() => {
-          this.logger.info('save config')
-          this.queues.immediate.addThread()
-          this.emit(socket, 'threadsCount', this.queues.immediate.getThreads().length)
-        })
+      socket.on('addThread', (record) => {
+        const threads = nconf.get('immediate:threads')
+        threads.push(record)
+        const res = this.schemaValidator.validate(threads, threadsSettingSchema);
+
+        if (res.valid === false) {
+          this.logger.error('schema is not valid')
+          this.emit(socket, 'settingSavedFalse', null)
+        } else {
+          nconf.set('immediate:threads', threads)
+          this.nconf.save(() => {
+            this.logger.info('save config')
+            this.queues.immediate.addThread()
+            this.emit(socket, 'settingSaved', threads)
+          })
+        }
       })
 
       socket.on('delThread', (index) => {
-        this.nconf.set('immediate:maxThreadsCount', this.nconf.get('immediate:maxThreadsCount') - 1)
+        const threads = nconf.get('immediate:threads')
+        threads.splice(index, 1)
+        nconf.set('immediate:threads', threads)
         this.nconf.save(() => {
           this.logger.info('save config ' + index)
           this.queues.immediate.delThread(index, () => {
-            this.emit(socket, 'threadsCount', this.queues.immediate.getThreads().length)
+            this.emit(socket, 'settingSaved', threads)
           })
         })
+      })
+
+      socket.on('updateThreadSetting', (record) => {
+        const threads = nconf.get('immediate:threads')
+        threads[record.id] = record.setting
+        const res = this.schemaValidator.validate(threads, threadsSettingSchema);
+
+        if (res.valid === false) {
+          this.logger.error('schema is not valid')
+          this.emit(socket, 'settingSavedFalse', null)
+        } else {
+          nconf.set('immediate:threads', threads)
+          this.nconf.save(() => {
+            this.logger.info('update setting on thread #' + record.id + ' success')
+            this.emit(socket, 'settingSaved', threads)
+          })
+        }
       })
 
       socket.on('requestQueueData', params => {
