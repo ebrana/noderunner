@@ -27,6 +27,6 @@ build/Release
 node_modules
 
 .idea/
-custom/
+/custom/
 
 built

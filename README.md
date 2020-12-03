@@ -74,3 +74,21 @@ Default config file ``config/defaults.json`` is possible to override by ``config
   }
 }
 ```
+## docker
+copy the contents docker/initConfig to the projects root folder
+
+### instal npm packages 
+```
+docker-compose run --rm u_npm install
+```
+
+### start server 
+```
+docker-compose up server
+```
+
+### npm run 
+```
+docker-compose run --rm u_npm run <scriptsName>
+docker-compose run --rm u_npm run lint
+```
