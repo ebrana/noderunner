@@ -5,6 +5,7 @@
     "minItems": 3,
     "items": {
         "type": "object",
+        "maxProperties": 3,
         "required": [
             "include",
             "exclude",
