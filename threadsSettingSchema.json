@@ -1,11 +1,10 @@
 {
     "title": "threads settings schema v1",
     "type": "array",
-    "additionalProperties": false,
     "minItems": 3,
     "items": {
         "type": "object",
-        "maxProperties": 3,
+        "additionalProperties": false,
         "required": [
             "include",
             "exclude",
