@@ -1,6 +1,20 @@
+import * as chance from 'chance'
 import isRunning = require('is-running')
 import Job from '../job'
 import Queue from '../queue'
+
+interface IThread {
+  'callback': boolean,
+  'status': string,
+  'jobId': string,
+}
+
+interface IConfiguration {
+  'include': string[],
+  'exclude': string[],
+  'implementation': string,
+  'delete': boolean
+}
 
 export default class Immediate extends Queue {
   private timeout: NodeJS.Timeout
@@ -8,8 +22,9 @@ export default class Immediate extends Queue {
   private lastFinishedCallback: () => void
   private lastCheckTime: number
   private isStuckJobsCheckPlanned: boolean
-  private readonly threads: string[]
+  private readonly threads: Map<string, IThread>
   private readonly jobStats: { [id: string]: { finished?: number; started: number; thread: number } }
+  private configuration: IConfiguration[]
 
   constructor(db, nconf, logger) {
     super(db, nconf, logger)
@@ -19,29 +34,51 @@ export default class Immediate extends Queue {
     this.lastFinishedCallback = null
     this.lastCheckTime = null
     this.isStuckJobsCheckPlanned = false
-
-    // entry for every thread with null value when free and non-null ('booked' or job _id when currently used)
-    this.threads = []
-    for (let i = 0; i < nconf.get('immediate:threads').length; i++) {
-      this.threads[i] = null
+    this.configuration = this.nconf.get('immediate:threads')
+    this.threads = new Map()
+    const settings = nconf.get('immediate:threads')
+    for (const i in settings) {
+      settings[i].uid = this.addThread(settings[i].uid)
     }
+    nconf.set('immediate:threads', settings)
 
-    // store job timing stats (stared, finished, duration) for analysis in watchdog queue
+    // store job timing stats (started, finished, duration) for analysis in watchdog queue
     this.jobStats = {}
   }
 
-  public addThread() {
-    this.threads.push(null);
+  public computeThreadeUid() {
+    return new chance().guid()
   }
 
-  public delThread(index: number, callback) {
-    if (this.threads[index] === null) {
-      this.threads.splice(index, 1);
-      callback();
+  public addThread(key) {
+    const randomGenerator = new chance()
+    key = key ? key : randomGenerator.guid()
+    this.threads.set(key, {
+      'callback': false,
+      'jobId': '',
+      'status': null,
+    })
+    return key
+  }
+
+  public delThread(index) {
+    const key = Array.from(this.threads)[index][0]
+    const thread = this.threads.get(key)
+    if (thread && thread.status === null) {
+      this.threads.delete(key)
+      this.logger.info('thread ' + index + '(' + key + ') removed')
+      this.delThreadeCallback(index)
+    } else if (thread) {
+      this.logger.error('thread ' + index + '(' + key + ') delete marked')
+      this.logger.error(JSON.stringify(thread))
+      this.threads.set(key, {
+        'callback': true,
+        'jobId': null,
+        'status': 'delete'
+      })
     } else {
-      setTimeout(()=>{
-        this.delThread(index, callback)
-      }, 2000, index, callback)
+      // pokud by to nekdo zavolal nahodou tesne po vymazani v jine session
+      this.logger.warning('can`t delete thread ' + index + '(' + key + '), not found!')
     }
   }
 
@@ -58,7 +95,7 @@ export default class Immediate extends Queue {
     if (!this.jobStats[id]) {
       this.jobStats[id] = {
         started: job.document.started,
-        thread: threadIndex
+        thread: threadIndex[1]
       }
     }
   }
@@ -69,30 +106,23 @@ export default class Immediate extends Queue {
     if (!this.jobStats[id]) {
       this.jobStats[id] = {
         started: null,
-        thread: threadIndex
+        thread: threadIndex[1]
       }
     }
     this.jobStats[id].finished = Date.now() / 1000
   }
 
-  // return index of lowest free thread and lock it
-  public bookThread() {
-    for (let i = 0; i < this.threads.length; i++) {
-      if (this.threads[i] === null) {
-        this.logger.silly('booked thread ' + i)
-        this.threads[i] = 'booked'
-        return i
-      }
-    }
-    return null
-  }
-
   public bookThreadByIndexes(indexes: number[]) {
     for (const item of indexes) {
-      if (this.threads[item] === null) {
+      const key = Array.from(this.threads)[item][0]
+      if (this.threads.get(key).status === null) {
         this.logger.silly('booked thread ' + item)
-        this.threads[item] = 'booked'
-        return item;
+        this.threads.set(key, {
+          callback: null,
+          jobId: null,
+          status: 'booked'
+        })
+        return [key, item]
       }
     }
     return null
@@ -134,7 +164,7 @@ export default class Immediate extends Queue {
       return this.getThreadsByCriteriaTags(i, configuration, tags, host)
     }).filter((index) => {
       return index !== null
-    });
+    })
   }
 
   public bookThreadWithTags(callback, fallback) {
@@ -143,11 +173,11 @@ export default class Immediate extends Queue {
         .collection('immediate')
         .findOne(
           { status: this.nconf.get('statusAlias:planned') },
-          { sort: [['nextRun', 'asc'], ['priority', 'desc'], ['added', 'desc'], ['started', 'desc']]},
+          { sort: [['nextRun', 'asc'], ['priority', 'desc'], ['added', 'desc'], ['started', 'desc']] },
           (err, doc) => {
             if (err) {
               this.logger.error('cannot load job from queue', err)
-              fallback(err)
+              fallback(err, null)
             } else if (doc === null) {
               // no next job found in immediate queue
               fallback(false, null)
@@ -159,7 +189,7 @@ export default class Immediate extends Queue {
                 // konfigurace threadu je takova, ze by se tento job nikdy nespustil
                 fallback(false, null)
               } else {
-                const threadeIndex = this.bookThreadByIndexes(threadeIndexes);
+                const threadeIndex = this.bookThreadByIndexes(threadeIndexes)
                 if (threadeIndex !== null) {
                   this.fetchNextJobByDocument(threadeIndex, doc, callback, fallback)
                 } else {
@@ -179,7 +209,7 @@ export default class Immediate extends Queue {
     const changes = {
       started: new Date().getTime() / 1000,
       status: this.nconf.get('statusAlias:fetched'),
-      thread: threadIndex
+      thread: threadIndex[0]
     }
 
     try {
@@ -211,42 +241,6 @@ export default class Immediate extends Queue {
     }
   }
 
-  public fetchNextJob(threadIndex, callback, fallback) {
-    const changes = {
-      started: new Date().getTime() / 1000,
-      status: this.nconf.get('statusAlias:fetched'),
-      thread: threadIndex
-    }
-
-    try {
-      this.db
-        .collection('immediate')
-        // @ts-ignore this method is missing in mongodb type, need to update mongodb to v3
-        .findAndModify(
-          { status: this.nconf.get('statusAlias:planned') },
-          [['nextRun', 'asc'], ['priority', 'desc'], ['added', 'desc'], ['started', 'desc']],
-          { $set: changes },
-          { new: true },
-          (err, doc) => {
-            if (err) {
-              this.logger.error('cannot load job from queue', err)
-              fallback(err)
-            } else if (!doc.value) {
-              // no next job found in immediate queue
-              fallback(false)
-            } else {
-              // next job found in immediate queue
-              const job = new Job(this)
-              job.initByDocument(doc.value)
-              callback(job)
-            }
-          }
-        )
-    } catch (e) {
-      fallback(e)
-    }
-  }
-
   public stop(callback, withBookedWaiting: boolean = true) {
     if (!this.isAnyBookedThread() && typeof callback === 'function' && withBookedWaiting) {
       callback()
@@ -271,48 +265,57 @@ export default class Immediate extends Queue {
   }
 
   public rebookThread(threadIndex, jobId) {
-    this.threads[threadIndex] = jobId
+    const thread = this.threads.get(threadIndex[0]);
+    thread.jobId = jobId;
+    this.threads.set(threadIndex[0], thread);
   }
 
   public releaseThread(index) {
-    this.logger.silly('released thread ' + index)
-    this.threads[index] = null
+    this.logger.silly('released thread ' + index[1] + '(' + index[0] + ')')
+    const thread = this.threads.get(index[0])
+    if (thread && thread.callback === true) {
+      this.threads.delete(index[0])
+      this.delThreadeCallback(index)
+    } else {
+      this.logger.silly('released thread ' + index[1] + '(' + index[0] + ')')
+      thread.status = null
+      this.threads.set(index[0], thread)
+    }
   }
 
   public getThreads() {
-    return this.threads
+    return Array.from(this.threads)
   }
 
-  public getRunningThreads() {
-    return this.threads.filter(t => {
-      return t !== null && t !== 'booked'
+  public getBookedThreadsCount(): number {
+    let size = 0;
+    for (const thread in this.threads) {
+      if (this.threads.get(thread).status === 'booked') {
+        size++
+      }
+    }
+
+    return size
+  }
+
+  public isAnyBookedThread(): boolean {
+    return this.getBookedThreadsCount() > 0
+  }
+
+  public getThreadsInfo(highlightIndex): string {
+    let info = '['
+    this.threads.forEach((value, key) => {
+      if (key === highlightIndex[0]) {
+        info += 'o'
+      } else if (value.status === 'booked') {
+        info += 'x'
+      } else {
+        info += '-'
+      }
     })
-  }
+    info += ']'
 
-  public getBookedThreads() {
-    return this.threads.filter(t => {
-      return t !== null
-    })
-  }
-
-  public isAnyBookedThread() {
-    return this.getBookedThreads().length > 0
-  }
-
-  public getThreadsInfo(highlightIndex) {
-    return (
-      '[' +
-      this.threads
-        .map((t, i) => {
-          return typeof highlightIndex !== 'undefined' && highlightIndex === i
-            ? 'o'
-            : t === null
-            ? '-'
-            : 'x'
-        })
-        .join('') +
-      ']'
-    )
+    return info
   }
 
   public getWaitingJobsCount(callback) {
@@ -335,7 +338,7 @@ export default class Immediate extends Queue {
             this.logger.error(err)
           } else {
             docs.forEach((value, index) => {
-              docs[index].runningTime = (new Date().getTime() / 1000) - docs[index].started;
+              docs[index].runningTime = (new Date().getTime() / 1000) - docs[index].started
             })
             return callback(docs)
           }
@@ -383,6 +386,10 @@ export default class Immediate extends Queue {
     } catch (error) {
       this.logger.error(error.message, error)
     }
+  }
+
+  private delThreadeCallback(index) {
+    this.emit('settingSavedByDelete', index)
   }
 
   private _check() {

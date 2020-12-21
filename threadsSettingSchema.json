@@ -28,6 +28,12 @@
                     "string",
                     "null"
                 ]
+            },
+            "delete": {
+                "type": "boolean"
+            },
+            "uid": {
+                "type": "string"
             }
         }
     }

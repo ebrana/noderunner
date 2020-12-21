@@ -67,33 +67,37 @@ describe('tags configuration testing', () => {
       {
         "exclude": ["tag4"],
         "implementation": null,
-        "include": ["tag1", "tag2", "tag3"]
+        "include": ["tag1", "tag2", "tag3"],
+        "uid": "81232f13-1576-5abb-945c-c195a4c71896"
       },
       {
         "exclude": ["tag4"],
         "implementation": null,
-        "include": ["tag1"]
+        "include": ["tag1"],
+        "uid": "283d9a56-e9df-5aa7-9fc8-7a84d4d8f506"
       },
       {
         "exclude": ["tag3", "tag4"],
         "implementation": null,
-        "include": ["tag2"]
+        "include": ["tag2"],
+        "uid": "297241d6-6c43-5fae-adbf-834b8440d63e"
       },
       {
         "exclude": [],
         "implementation": "moje-implementace.mybrana.com",
-        "include": []
+        "include": [],
+        "uid": "d078d1c8-cdb8-5b8e-ae11-f5a8b7b626f8"
       }
     ]);
     const immediateQueue = new Immediate(db, nconf, logger)
     immediateQueue.bookThreadWithTags((quedJob: Job) => {
-      expect(quedJob.document.thread).toEqual(0);
+      expect(quedJob.document.thread).toEqual("81232f13-1576-5abb-945c-c195a4c71896");
     }, null)
     immediateQueue.bookThreadWithTags((quedJob: Job) => {
-      expect(quedJob.document.thread).toEqual(1);
+      expect(quedJob.document.thread).toEqual("283d9a56-e9df-5aa7-9fc8-7a84d4d8f506");
     }, null)
     immediateQueue.bookThreadWithTags((quedJob: Job) => {
-      expect(quedJob.document.thread).toEqual(3);
+      expect(quedJob.document.thread).toEqual("d078d1c8-cdb8-5b8e-ae11-f5a8b7b626f8");
     }, null)
   })
 

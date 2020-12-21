@@ -47,7 +47,7 @@ export default class Job {
       'THREAD ' +
         this.threadName +
         ' ' +
-        (this.queue as Immediate).getThreadsInfo(this.threadIndex) +
+        (this.queue as Immediate).getThreadsInfo([this.threadIndex]) +
         ' running ' +
         this.document._id
     )

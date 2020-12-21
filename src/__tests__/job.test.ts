@@ -38,6 +38,7 @@ jobForRunTest.initByDocument({
   _id: '5f61d86725e34d7a8ba9ca9b',
   command: 'sleep 10',
   job: 'sleep 10',
+  thread: 'aaa-bbb'
 })
 
 describe('Job.nextRunTime', () => {

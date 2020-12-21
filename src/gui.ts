@@ -1,7 +1,6 @@
 import { Validator } from 'jsonschema'
 import { debounce } from 'lodash'
 import * as nconf from 'nconf'
-import * as Nconf from 'nconf'
 import threadsSettingSchema = require("../threadsSettingSchema.json");
 import { Logger } from './logger'
 import History from './queue/history'
@@ -17,7 +16,7 @@ interface IQueues {
 
 export default class Gui {
   public db: string
-  public nconf: Nconf.Provider
+  public nconf: nconf.Provider
   public logger: Logger
   public queues: IQueues
   public watchdog: Watchdog
@@ -85,6 +84,7 @@ export default class Gui {
 
       socket.on('addThread', (record) => {
         const threads = nconf.get('immediate:threads')
+        record.uid = this.queues.immediate.computeThreadeUid()
         threads.push(record)
         const res = this.schemaValidator.validate(threads, threadsSettingSchema);
 
@@ -92,41 +92,42 @@ export default class Gui {
           this.logger.error('schema is not valid')
           this.emit(socket, 'settingSavedFalse', null)
         } else {
-          nconf.set('immediate:threads', threads)
+          this.emitToAll('settingSaved', {'threads': threads, 'invalidateChart': false})
           this.nconf.save(() => {
             this.logger.info('save config')
-            this.queues.immediate.addThread()
-            this.emit(socket, 'settingSaved', threads)
+            this.queues.immediate.addThread(record.uid)
+            this.emitToAll('settingSaved', {'threads': threads, 'invalidateChart': true})
           })
         }
       })
 
       socket.on('delThread', (index) => {
         const threads = nconf.get('immediate:threads')
-        threads.splice(index, 1)
-        nconf.set('immediate:threads', threads)
+        threads[index[0]].delete = true;
         this.nconf.save(() => {
-          this.logger.info('save config ' + index)
-          this.queues.immediate.delThread(index, () => {
-            this.emit(socket, 'settingSaved', threads)
-          })
+          this.emitToAll('settingSaved', {'threads': threads, 'invalidateChart': false})
+          this.queues.immediate.delThread(index[0])
         })
       })
 
       socket.on('updateThreadSetting', (record) => {
         const threads = nconf.get('immediate:threads')
-        threads[record.id] = record.setting
-        const res = this.schemaValidator.validate(threads, threadsSettingSchema);
+        if (threads[record.id].delete === undefined) { // ukladame nastaveni jen pro vlakna, ktera nejsou oznacena pro mazani
+          const uid = threads[record.id].uid
+          threads[record.id] = record.setting
+          threads[record.id].uid = uid
+          const res = this.schemaValidator.validate(threads, threadsSettingSchema);
 
-        if (res.valid === false) {
-          this.logger.error('schema is not valid')
-          this.emit(socket, 'settingSavedFalse', null)
-        } else {
-          nconf.set('immediate:threads', threads)
-          this.nconf.save(() => {
-            this.logger.info('update setting on thread #' + record.id + ' success')
-            this.emit(socket, 'settingSaved', threads)
-          })
+          if (res.valid === false) {
+            this.logger.error('schema is not valid')
+            this.emit(socket, 'settingSavedFalse', null)
+          } else {
+            nconf.set('immediate:threads', threads)
+            this.nconf.save(() => {
+              this.logger.info('update setting on thread #' + record.id + ' success')
+              this.emitToAll('settingSaved', { 'threads': threads, 'invalidateChart': false })
+            })
+          }
         }
       })
 
@@ -152,6 +153,18 @@ export default class Gui {
 
     this.queues.immediate.on('jobCompleted', job => {
       this.emitToAll('jobCompleted', job)
+    })
+
+    this.queues.immediate.on('settingSavedByDelete', index => {
+      const threads = this.nconf.get('immediate:threads')
+      threads.splice(index, 1)
+      this.nconf.set('immediate:threads', threads)
+      this.nconf.save(() => {
+        this.logger.info('save config ' + index)
+        this.logger.error('thread ' + index + ' removed')
+        this.emitToAll('settingSaved', {'threads': threads, 'invalidateChart': true})
+        this.updateAllRunningList()
+      })
     })
 
     this.queues.immediate.on('jobStarted', job => {
@@ -185,6 +198,20 @@ export default class Gui {
     })
 
     return this
+  }
+
+  public updateAllRunningList() {
+    this.queues.immediate.getJobs(
+      data => {
+        this.emitToAll('runningJobsList', data)
+      },
+      {
+        $or: [
+          { status: this.nconf.get('statusAlias:fetched') },
+          { status: this.nconf.get('statusAlias:running') }
+        ]
+      }
+    )
   }
 
   public updateRunningList(socket) {
