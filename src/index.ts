@@ -1,7 +1,6 @@
+import { Validator } from 'jsonschema'
 import { MongoClient, MongoClientOptions } from 'mongodb'
 import * as nconf from 'nconf'
-
-import { Validator } from 'jsonschema'
 import threadsSettingSchema = require("../threadsSettingSchema.json");
 import Gui from './gui'
 import { createLogger } from './logger'
@@ -18,6 +17,10 @@ nconf
   .file('custom', { file: 'custom/config.json' })
   .file({ file: 'defaults.json' })
   .defaults({ logLevel: 'error' })
+
+if (nconf.get('jwt:self-signed')) {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+}
 
 let immediate, planned, history, watchdog, gui, mongoTimeout
 

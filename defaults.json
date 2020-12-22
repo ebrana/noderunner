@@ -5,6 +5,12 @@
     "user": "nginx",
     "group": "nginx"
   },
+  "jwt": {
+    "enable": false,
+    "url": "",
+    "cert": "",
+    "self-signed": false
+  },
   "immediate": {
     "interval": 5000,
     "maxThreadsCount": 3,

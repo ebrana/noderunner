@@ -2,6 +2,7 @@ import { Validator } from 'jsonschema'
 import { debounce } from 'lodash'
 import * as nconf from 'nconf'
 import threadsSettingSchema = require("../threadsSettingSchema.json");
+import Identity from './identity'
 import { Logger } from './logger'
 import History from './queue/history'
 import Immediate from './queue/immediate'
@@ -33,6 +34,7 @@ export default class Gui {
   }, 3000)
 
   private readonly restartCalback: CallableFunction
+  private authorizator: Identity
 
   constructor(db, nconfig, logger, queues, watchdog, schemaValidator, restartCalback) {
     this.db = db
@@ -42,6 +44,9 @@ export default class Gui {
     this.watchdog = watchdog
     this.restartCalback = restartCalback;
     this.schemaValidator = schemaValidator;
+    if (nconf.get('jwt:enable')) {
+      this.authorizator = new Identity(nconf)
+    }
   }
 
   public run() {
@@ -82,54 +87,90 @@ export default class Gui {
         this.emit(socket, 'plannedCount', cnt)
       })
 
-      socket.on('addThread', (record) => {
-        const threads = nconf.get('immediate:threads')
-        record.uid = this.queues.immediate.computeThreadeUid()
-        threads.push(record)
-        const res = this.schemaValidator.validate(threads, threadsSettingSchema);
+      if (nconf.get('jwt:enable')) {
 
-        if (res.valid === false) {
-          this.logger.error('schema is not valid')
-          this.emit(socket, 'settingSavedFalse', null)
-        } else {
-          this.emitToAll('settingSaved', {'threads': threads, 'invalidateChart': false})
-          this.nconf.save(() => {
-            this.logger.info('save config')
-            this.queues.immediate.addThread(record.uid)
-            this.emitToAll('settingSaved', {'threads': threads, 'invalidateChart': true})
+        socket.on('login', (record) => {
+          this.authorizator.login(record.email, record.password, (token, errorCode, errorMessage) => {
+            if (token) {
+              this.emit(socket, 'loginSuccess', { 'token': token, 'username': record.email })
+            } else {
+              this.emit(socket, 'loginError', { 'code': errorCode, 'message': errorMessage })
+            }
           })
-        }
-      })
-
-      socket.on('delThread', (index) => {
-        const threads = nconf.get('immediate:threads')
-        threads[index[0]].delete = true;
-        this.nconf.save(() => {
-          this.emitToAll('settingSaved', {'threads': threads, 'invalidateChart': false})
-          this.queues.immediate.delThread(index[0])
         })
-      })
 
-      socket.on('updateThreadSetting', (record) => {
-        const threads = nconf.get('immediate:threads')
-        if (threads[record.id].delete === undefined) { // ukladame nastaveni jen pro vlakna, ktera nejsou oznacena pro mazani
-          const uid = threads[record.id].uid
-          threads[record.id] = record.setting
-          threads[record.id].uid = uid
-          const res = this.schemaValidator.validate(threads, threadsSettingSchema);
+        socket.on('addThread', (record) => {
+          if (this.isAllowed(record.token)) {
+            const threads = nconf.get('immediate:threads')
+            record.setting.uid = this.queues.immediate.computeThreadeUid()
+            threads.push(record.setting)
+            const res = this.schemaValidator.validate(threads, threadsSettingSchema);
 
-          if (res.valid === false) {
-            this.logger.error('schema is not valid')
-            this.emit(socket, 'settingSavedFalse', null)
-          } else {
-            nconf.set('immediate:threads', threads)
-            this.nconf.save(() => {
-              this.logger.info('update setting on thread #' + record.id + ' success')
+            if (res.valid === false) {
+              this.logger.error('schema is not valid')
+              this.emit(socket, 'settingSavedFalse', null)
+            } else {
               this.emitToAll('settingSaved', { 'threads': threads, 'invalidateChart': false })
-            })
+              this.nconf.save(() => {
+                this.logger.info('save config')
+                this.queues.immediate.addThread(record.setting.uid)
+                this.emitToAll('settingSaved', { 'threads': threads, 'invalidateChart': true })
+              })
+            }
+          } else {
+            this.permissionDenied(record, socket)
           }
-        }
-      })
+        })
+
+        socket.on('delThread', (record) => {
+          if (this.isAllowed(record.token)) {
+            const threads = nconf.get('immediate:threads')
+            threads[record.index].delete = true;
+            this.nconf.save(() => {
+              this.emitToAll('settingSaved', { 'threads': threads, 'invalidateChart': false })
+              this.queues.immediate.delThread(record.index)
+            })
+          } else {
+            this.permissionDenied(record, socket)
+          }
+        })
+
+        socket.on('refreshToken', (record) => {
+          this.authorizator.refresh(record.token, (token, errorCode, errorMessage) => {
+            if (token) {
+              this.emit(socket, 'refreshTokenSuccess', { 'token': token })
+            } else {
+              this.emit(socket, 'refreshTokenError', { 'code': errorCode, 'message': errorMessage })
+            }
+          })
+        })
+
+        socket.on('updateThreadSetting', (record) => {
+          if (this.isAllowed(record.token)) {
+            const threads = nconf.get('immediate:threads')
+            if (threads[record.id].delete === undefined) { // ukladame nastaveni jen pro vlakna, ktera nejsou oznacena pro mazani
+              const uid = threads[record.id].uid
+              threads[record.id] = record.setting
+              threads[record.id].uid = uid
+              const res = this.schemaValidator.validate(threads, threadsSettingSchema);
+
+              if (res.valid === false) {
+                this.logger.error('schema is not valid')
+                this.emit(socket, 'settingSavedFalse', null)
+              } else {
+                nconf.set('immediate:threads', threads)
+                this.nconf.save(() => {
+                  this.logger.info('update setting on thread #' + record.id + ' success')
+                  this.emitToAll('settingSaved', { 'threads': threads, 'invalidateChart': false })
+                })
+              }
+            }
+          } else {
+            this.permissionDenied(record, socket)
+          }
+        })
+
+      }
 
       socket.on('requestQueueData', params => {
         this.logger.verbose('request queue data', params)
@@ -301,11 +342,25 @@ export default class Gui {
     })
   }
 
+  private isAllowed(token: string): boolean {
+    return nconf.get('jwt:enable') && this.authorizator.isValidate(token) || nconf.get('jwt:enable') === false
+  }
+
   private _initSocket() {
     const express = require('express')
     const app = express()
     const listener = app.listen(8001)
     app.use('/', express.static('public'))
     return require('socket.io')(listener)
+  }
+
+  private permissionDenied(record, socket) {
+    this.logger.error('permission denied')
+    try {
+      this.authorizator.validate(record.token)
+      this.emit(socket, 'permissionDenied', null)
+    } catch (e) {
+      this.emit(socket, 'permissionDenied', e.message)
+    }
   }
 }
