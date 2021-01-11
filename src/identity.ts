@@ -1,5 +1,5 @@
 import * as fs from 'fs'
-import { IncomingMessage } from 'http'
+import { IncomingMessage, request } from 'http'
 import * as https from 'https'
 import * as jwt from 'jsonwebtoken'
 import { Provider as Nconf } from 'nconf'
@@ -16,38 +16,27 @@ export default class Identity {
 
   public refresh(token: string, callback: CallableFunction) {
     const data = JSON.stringify({
-      'token': token
+      'args': {
+        'token': token
+      },
+      'methodname': 'refresh',
+      'type': 'jsonwsp/request',
+      'version': '1.0'
     })
-    const options = {
-      method: 'POST',
-    }
-    const req = https.request(this.nconf.get('jwt:url') + 'refresh', options, res => {
-      this.httpClientCallback(res, callback)
-    })
-    req.on('error', (error) => {
-      callback(null, '', error.message)
-    })
-    req.write(data)
-    req.end()
+    this.post(data, callback)
   }
 
   public login(username: string, password: string, callback: CallableFunction) {
     const data = JSON.stringify({
-      'password': password,
-      'username': username
+      'args': {
+        'password': password,
+        'username': username
+      },
+      'methodname': 'login',
+      'type': 'jsonwsp/request',
+      'version': '1.0'
     })
-    const options = {
-      method: 'POST'
-    }
-    const req = https.request(this.nconf.get('jwt:url') + 'login_check', options, res => {
-      this.httpClientCallback(res, callback)
-    })
-    req.on('error', (error) => {
-      callback(null, '', error.message)
-      // callback('test', 200, null)
-    })
-    req.write(data)
-    req.end()
+    this.post(data, callback)
   }
 
   public isValidate(token: string): boolean {
@@ -59,16 +48,38 @@ export default class Identity {
     }
   }
 
-  public getIdentity(token: string): object|string|null {
-    try {
-      return jwt.verify(token, this.publicCert)
-    } catch (e) {
-      return null
-    }
-  }
-
   public validate(token: string) {
     jwt.verify(token, this.publicCert)
+  }
+
+  protected post(data: string, callback: CallableFunction) {
+    const options = {
+      headers: {
+        'Authorization': 'Bearer ' + this.nconf.get('jwt:webserviceToken'),
+        'Content-Type': 'application/json'
+      },
+      method: 'POST',
+    }
+    if (this.nconf.get('jwt:https')) {
+      const req = https.request(this.nconf.get('jwt:url'), options, res => {
+        this.httpClientCallback(res, callback)
+      })
+      req.on('error', (error) => {
+        callback(null, '', error.message)
+      })
+      req.write(data)
+      req.end()
+    } else {
+      const req = request(this.nconf.get('jwt:url'), options, res => {
+        this.httpClientCallback(res, callback)
+      })
+      req.on('error', (error) => {
+        callback(null, '', error.message)
+        // callback('test', 200, null)
+      })
+      req.write(data)
+      req.end()
+    }
   }
 
   protected httpClientCallback(res: IncomingMessage, callback: CallableFunction) {
@@ -78,7 +89,7 @@ export default class Identity {
     res.on('end', () => {
       if (res.statusCode === 200) { // stranka vrati status 200
         try {
-          const token = JSON.parse(rawData.toString()).token
+          const token = JSON.parse(rawData.toString()).result.token
           if (token !== undefined) {
             callback(token, 200, null)
           } else {
@@ -87,6 +98,8 @@ export default class Identity {
         } catch (e) {
           callback(null, 500, e.message)
         }
+      } else if (res.statusCode === 401) {
+        callback(null, 401, 'invalid credetials')
       } else {
         callback(null, res.statusCode, res.statusMessage)
       }
