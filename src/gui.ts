@@ -343,7 +343,7 @@ export default class Gui {
   }
 
   private isAllowed(token: string): boolean {
-    return nconf.get('jwt:enable') && this.authorizator.isValidate(token) || nconf.get('jwt:enable') === false
+    return nconf.get('jwt:enable') && this.authorizator.isValidate(token)
   }
 
   private _initSocket() {
@@ -357,8 +357,10 @@ export default class Gui {
   private permissionDenied(record, socket) {
     this.logger.error('permission denied')
     try {
-      this.authorizator.validate(record.token)
-      this.emit(socket, 'permissionDenied', null)
+      if (nconf.get('jwt:enable')) {
+        this.authorizator.validate(record.token)
+      }
+      this.emit(socket, 'permissionDenied', 'permission denied')
     } catch (e) {
       this.emit(socket, 'permissionDenied', e.message)
     }
