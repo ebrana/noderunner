@@ -326,6 +326,18 @@ export default class Immediate extends Queue {
       })
   }
 
+  public insertJob(document, callback, fallback) {
+    this.db
+      .collection('immediate')
+      .insertOne(document)
+      .then(() => {
+        callback()
+      })
+      .catch(error => {
+        fallback(error.message, error)
+      })
+  }
+
   public getJobs(callback, filter: any) {
     try {
       this.db

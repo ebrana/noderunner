@@ -99,6 +99,81 @@ export default class Gui {
           })
         })
 
+        socket.on('delCommand', (record) => {
+          if (this.isAllowed(record.token)) {
+            this.queues.planned.deleteJob(record.id, () => {
+              this.updateQueue('planned', record.filter, socket)
+              this.queues.planned.getJobsCount(cnt => {
+                this.emit(socket, 'plannedCount', cnt)
+              })
+            }, (message, error) => { this.logger.error(error) })
+          } else {
+            this.permissionDenied(record, socket)
+          }
+        })
+
+        socket.on('updateCommand', (record) => {
+          if (this.isAllowed(record.token)) {
+            record.command.job = record.command.command
+            record.command.status = 'planed'
+            if (record.command.tags.length === 0) {
+              delete record.command.tags
+            }
+            this.queues.planned.updateJob(record.id, record.command, () => {
+              try {
+                this.updateQueue('planned', record.filter, socket)
+              } catch (e) {
+                this.logger.error(e)
+              }
+            }, (message, error) => { this.logger.error(error) })
+          } else {
+            this.permissionDenied(record, socket)
+          }
+        })
+
+        socket.on('addCommand', (record) => {
+          if (this.isAllowed(record.token)) {
+            if (record.item.id === undefined) {
+              if (record.command) {
+                record.command.job = record.command.command
+                record.command.status = 'planed'
+                if (record.command.tags.length === 0) {
+                  delete record.command.tags
+                }
+                if (record.item.type === 'planned') {
+                  this.queues.planned.insertJob(record.command, () => {
+                    try {
+                      this.updateQueue(record.item.type, record.filter, socket)
+                      this.queues.planned.getJobsCount(cnt => {
+                        this.emit(socket, 'plannedCount', cnt)
+                      })
+                    } catch (e) {
+                      this.logger.error(e)
+                    }
+                  }, (message, error) => { this.logger.error(error) })
+                } else if (record.item.type === 'immediate') {
+                  record.command.added = new Date().getTime() / 1000
+                  if (record.command.schedule !== undefined) {
+                    delete record.command.schedule
+                  }
+                  this.queues.immediate.insertJob(record.command, () => {
+                    try {
+                      this.updateQueue(record.item.type, record.filter, socket)
+                      this.queues.immediate.getWaitingJobsCount(cnt => {
+                        this.emit(socket, 'waitingCount', cnt)
+                      })
+                    } catch (e) {
+                      this.logger.error(e)
+                    }
+                  }, (message, error) => { this.logger.error(error) })
+                }
+              }
+            }
+          } else {
+            this.permissionDenied(record, socket)
+          }
+        })
+
         socket.on('addThread', (record) => {
           if (this.isAllowed(record.token)) {
             const threads = nconf.get('immediate:threads')
@@ -270,20 +345,47 @@ export default class Gui {
   }
 
   public updateQueue(queueName, filter, socket) {
-    if (typeof filter.host !== 'undefined') {
-      filter.host = new RegExp(filter.host)
+    if (typeof filter.host !== 'undefined' && filter.host !== null && filter.host !== '') {
+      filter.host = new RegExp(filter.host.trim())
+    } else if (typeof filter.host !== 'undefined') {
+      delete filter.host
     }
 
-    if (typeof filter.job !== 'undefined') {
-      filter.job = new RegExp(filter.job)
+
+    if (typeof filter.job !== 'undefined' && filter.job !== null && filter.job !== '') {
+      filter.job = new RegExp(filter.job.trim())
+    } else if (typeof filter.job !== 'undefined') {
+      delete filter.job
     }
 
-    if (typeof filter.output !== 'undefined') {
-      filter.output = new RegExp(filter.output)
+    if (typeof filter.output !== 'undefined' && filter.output !== null && filter.output !== '') {
+      filter.output = new RegExp(filter.output.trim())
+    } else if (typeof filter.output !== 'undefined') {
+      delete filter.output
     }
 
-    if (typeof filter.schedule !== 'undefined') {
-      filter.schedule = new RegExp(filter.schedule)
+    if (typeof filter.schedule !== 'undefined' && filter.schedule !== null && filter.schedule !== '') {
+      filter.schedule = new RegExp(filter.schedule.trim())
+    } else if (typeof filter.schedule !== 'undefined') {
+      delete filter.schedule
+    }
+
+    if (typeof filter.tags !== 'undefined' && filter.tags !== null && filter.tags !== '') {
+      filter.tags = new RegExp(filter.tags.trim())
+    } else if (typeof filter.tags !== 'undefined') {
+      delete filter.tags
+    }
+
+    if (typeof filter.duration !== 'undefined' && filter.duration !== null && filter.duration !== '') {
+      filter.duration = new RegExp(filter.duration.trim())
+    } else if (typeof filter.duration !== 'undefined') {
+      delete filter.duration
+    }
+
+    if (typeof filter.status !== 'undefined' && filter.status !== null && filter.status !== '' && filter.status !== '-') {
+      filter.status = new RegExp(filter.status)
+    } else if (typeof filter.status !== 'undefined') {
+      delete filter.status
     }
 
     this.queues[queueName].getJobs(data => {
