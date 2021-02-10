@@ -1,3 +1,4 @@
+import * as parser from 'cron-parser'
 import { ObjectID } from 'mongodb'
 import Job from '../job'
 import Queue from '../queue'
@@ -12,27 +13,37 @@ export default class Planned extends Queue {
   }
 
   public insertJob(document, callback, fallback) {
-    this.db
-      .collection('planned')
-      .insertOne(document)
-      .then(() => {
-        callback()
-      })
-      .catch(error => {
-        fallback(error.message, error)
-      })
+    try {
+      parser.parseExpression(document.schedule)
+      this.db
+        .collection('planned')
+        .insertOne(document)
+        .then(() => {
+          callback()
+        })
+        .catch(error => {
+          fallback(error.message, error)
+        })
+    } catch (error) {
+      fallback(error.message, error)
+    }
   }
 
   public updateJob(id, document, callback, fallback) {
-    this.db
-      .collection('planned')
-      .updateOne({ "_id": new ObjectID(id) }, document)
-      .then(() => {
-        callback()
-      })
-      .catch(error => {
-        fallback(error.message, error)
-      })
+    try {
+      parser.parseExpression(document.schedule)
+      this.db
+        .collection('planned')
+        .updateOne({ "_id": new ObjectID(id) }, document)
+        .then(() => {
+          callback()
+        })
+        .catch(error => {
+          fallback(error.message, error)
+        })
+    } catch (error) {
+      fallback(error.message, error)
+    }
   }
 
   public deleteJob(id: string, callback, fallback) {

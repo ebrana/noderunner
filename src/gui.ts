@@ -114,18 +114,25 @@ export default class Gui {
 
         socket.on('updateCommand', (record) => {
           if (this.isAllowed(record.token)) {
-            record.command.job = record.command.command
-            record.command.status = 'planed'
-            if (record.command.tags.length === 0) {
-              delete record.command.tags
-            }
-            this.queues.planned.updateJob(record.id, record.command, () => {
-              try {
-                this.updateQueue('planned', record.filter, socket)
-              } catch (e) {
-                this.logger.error(e)
+            if (record.command && record.command.command && record.command.host) {
+              record.command.job = record.command.command
+              record.command.status = 'planed'
+              if (record.command.tags.length === 0) {
+                delete record.command.tags
               }
-            }, (message, error) => { this.logger.error(error) })
+              this.queues.planned.updateJob(record.id, record.command, () => {
+                try {
+                  this.updateQueue('planned', record.filter, socket)
+                } catch (e) {
+                  this.logger.error(e)
+                }
+              }, (message) => {
+                this.logger.error(message)
+                this.emit(socket, 'commandError', message)
+              })
+            } else {
+              this.emit(socket, 'commandError', 'Please set command and host.')
+            }
           } else {
             this.permissionDenied(record, socket)
           }
@@ -134,7 +141,7 @@ export default class Gui {
         socket.on('addCommand', (record) => {
           if (this.isAllowed(record.token)) {
             if (record.item.id === undefined) {
-              if (record.command) {
+              if (record.command && record.command.command && record.command.host) {
                 record.command.job = record.command.command
                 record.command.status = 'planed'
                 if (record.command.tags.length === 0) {
@@ -150,7 +157,10 @@ export default class Gui {
                     } catch (e) {
                       this.logger.error(e)
                     }
-                  }, (message, error) => { this.logger.error(error) })
+                  }, (message) => {
+                    this.logger.error(message)
+                    this.emit(socket, 'commandError', message )
+                  })
                 } else if (record.item.type === 'immediate') {
                   record.command.added = new Date().getTime() / 1000
                   if (record.command.schedule !== undefined) {
@@ -165,8 +175,13 @@ export default class Gui {
                     } catch (e) {
                       this.logger.error(e)
                     }
-                  }, (message, error) => { this.logger.error(error) })
+                  }, (message) => {
+                    this.logger.error(message)
+                    this.emit(socket, 'commandError', message )
+                  })
                 }
+              } else {
+                this.emit(socket, 'commandError', 'Please set command and host.')
               }
             }
           } else {
