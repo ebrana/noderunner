@@ -63,27 +63,38 @@ export default class Job {
         }
 
         const spawn = require('child_process').spawn
-        const child = spawn(command[0], command[1])
+        try {
+          const child = spawn(command[0], command[1])
 
-        this._save({
-          pid: child.pid
-        })
+          this._save({
+            pid: child.pid
+          })
 
-        child.stdout.on('data', data => {
-          // TODO dodelat buffer, aby se nevolalo mongo pri kazdem radku
-          // self.logger.verbose('THREAD ' + self.threadName + ': data ', data.toString().replace('\n', ' '));
-          this._appendToProperty('output', data.toString())
-        })
-        child.stderr.on('data', data => {
-          this.logger.warn(
-            'THREAD ' + this.threadName + ': error ',
-            data.toString().replace('\n', ' ')
-          )
-          this._appendToProperty('errors', data.toString())
-        })
-        child.on('exit', code => {
-          this._finish(code, callback, fallback)
-        })
+          child.stdout.on('data', data => {
+            // TODO dodelat buffer, aby se nevolalo mongo pri kazdem radku
+            // self.logger.verbose('THREAD ' + self.threadName + ': data ', data.toString().replace('\n', ' '));
+            this._appendToProperty('output', data.toString())
+          })
+          child.stderr.on('data', data => {
+            this.logger.warn(
+              'THREAD ' + this.threadName + ': error ',
+              data.toString().replace('\n', ' ')
+            )
+            this._appendToProperty('errors', data.toString())
+          })
+          child.on('exit', code => {
+            this._finish(code, callback, fallback)
+          })
+          child.on('error', data => {
+            this.logger.error(data.toString())
+            this._appendToProperty('errors', data.toString())
+            this._finish(500, callback, fallback)
+          })
+        } catch (e) {
+          this.logger.error(e.message)
+          this._appendToProperty('errors', e.message)
+          this._finish(500, callback, fallback)
+        }
       },
       () => {
         if (typeof fallback !== 'undefined') {
