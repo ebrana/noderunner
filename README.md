@@ -104,13 +104,7 @@ Default config file ``config/defaults.json`` is possible to override by ``config
   "gracefulShutdownTimeout": 30000
 }
 ```
-## docker
-copy the contents docker/initConfig to the projects root folder
-
-### instal npm packages 
-```
-docker-compose run --rm u_npm install
-```
+## Docker
 
 ### start server 
 ```
