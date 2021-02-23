@@ -192,20 +192,25 @@ export default class Gui {
         socket.on('addThread', (record) => {
           if (this.isAllowed(record.token)) {
             const threads = nconf.get('immediate:threads')
-            record.setting.uid = this.queues.immediate.computeThreadeUid()
-            threads.push(record.setting)
-            const res = this.schemaValidator.validate(threads, threadsSettingSchema);
-
-            if (res.valid === false) {
-              this.logger.error('schema is not valid')
-              this.emit(socket, 'settingSavedFalse', null)
+            if (nconf.get('immediate:maxThreadsCount') === threads.length) {
+              this.logger.error('threads limit reached')
+              this.emit(socket, 'settingSavedFalse', 'Threads limit reached.')
             } else {
-              this.emitToAll('settingSaved', { 'threads': threads, 'invalidateChart': false })
-              this.nconf.save(() => {
-                this.logger.info('save config')
-                this.queues.immediate.addThread(record.setting.uid)
-                this.emitToAll('settingSaved', { 'threads': threads, 'invalidateChart': true })
-              })
+              record.setting.uid = this.queues.immediate.computeThreadeUid()
+              threads.push(record.setting)
+              const res = this.schemaValidator.validate(threads, threadsSettingSchema);
+
+              if (res.valid === false) {
+                this.logger.error('schema is not valid')
+                this.emit(socket, 'settingSavedFalse', null)
+              } else {
+                this.emitToAll('settingSaved', { 'threads': threads, 'invalidateChart': false })
+                this.nconf.save(() => {
+                  this.logger.info('save config')
+                  this.queues.immediate.addThread(record.setting.uid)
+                  this.emitToAll('settingSaved', { 'threads': threads, 'invalidateChart': true })
+                })
+              }
             }
           } else {
             this.permissionDenied(record, socket)
