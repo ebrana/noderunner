@@ -32,7 +32,8 @@ update-rc.d noderunner defaults # Ubuntu
 chkconfig --add noderunner      # CentOS
 ```
 ## Debugging
-  * During development, ``bin/dev.sh`` script runs noderunner using ``nodemon`` for automatic reloading based on filechange. 
+  * During development, runs noderunner using ``nodemon`` for automatic reloading based on filechange.
+  * To run the tests, run the ``npm test``
   * Control daemon using init script ``service noderunner start|stop|restart|status|log``
   * Manual restart of service using ``service noderunner restart`` will try to gracefully let threads finish first. Timeout for force restart can be set using ``gracefulShutdownTimeout``.
 
@@ -46,23 +47,51 @@ Default config file ``config/defaults.json`` is possible to override by ``config
     "user": "nginx",
     "group": "nginx"
   },
+  "jwt": {
+    "enable": false, 
+    "https": true,
+    "webserviceToken": "",
+    "url": "",
+    "cert": "",
+    "self-signed": false
+  },
   "immediate": {
     "interval": 5000,				// num of millis to wait when nothing to do
-    "maxThreadsCount": 3			// num of allowed parallel proccesses 
+    "maxThreadsCount": 3,			// num of of threads allowed
+    "threads": [                                // default configurations for 3 threads
+        {
+          "include": [],                        // include tags
+          "exclude": [],                        // exclude tags
+          "implementation": null                // allowed domain
+        },
+        {
+          "include": [],
+          "exclude": [],
+          "implementation": null
+        },
+        {
+          "include": [],
+          "exclude": [],
+          "implementation": null
+        }
+    ]
   },
   "history": {
     "interval": 30000,				// frequency of history check in millis
-    "maxAge": 60000					// num of millis from job finish before its move to history queue
+    "maxAge": 60000,				// num of millis from job finish before its move to history queue
+    "cleanHours": 12,                           // success log deletion interval
+    "cleanErrorsHours": 40                      // error log deletion interval
   },
   "watchdog": {
     "interval": 360000,				// frequency of check in millis (every 6 minutes)
+    "loadCheckInterval": 10000,                 // average load calculation start interval   
     "badSamplesLimit": 15,			// number of consecutive samples before warning is send (1.5 hour)
     "email": {
       "from": "noderunner@ebrana.cz",
       "to": "dvorak@ebrana.cz"
     }
   },
-  "statusAlias": {					// can be used to rename statuses (especially for testing purposes)
+  "statusAlias": {				// can be used to rename statuses (especially for testing purposes)
     "planned": "planed2",
     "fetched": "fetched2",
     "running": "running2",
@@ -71,7 +100,8 @@ Default config file ``config/defaults.json`` is possible to override by ``config
   },
   "debug":{
     "threadNames":["Chuck","Paul"] // you can call threads by yourself :-)
-  }
+  },
+  "gracefulShutdownTimeout": 30000
 }
 ```
 ## docker
