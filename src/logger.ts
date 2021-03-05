@@ -11,6 +11,8 @@ import * as Transport from 'winston-transport'
 
 export type Logger = WinstonLogger
 
+type MyCallbackType = () => void
+
 // we want to catch specific mongo error which should be followed by reconnect (mongo client cannot reconnect by itself)
 class MongoErrorCatcher extends Transport {
   public onMongoError: () => void
@@ -20,11 +22,13 @@ class MongoErrorCatcher extends Transport {
     this.onMongoError = opts.onMongoError
   }
 
-  public log({ message, level }: any, callback: () => void) {
+  public log({ message, level }: any, callback: MyCallbackType|null = null) {
     if (this.onMongoError && level === 'error' && message === 'topology was destroyed') {
       this.onMongoError()
     }
-    callback()
+    if (callback) {
+      callback()
+    }
   }
 }
 
@@ -37,12 +41,16 @@ const myFormat = printf(info => {
 export const createLogger = (
   minLevel: string,
   namespace: string,
-  onMongoError?: () => void
+  onMongoError: MyCallbackType|null = null
 ): Logger => {
   const transport = new transports.Console({
     format: combine(label({ label: namespace.toUpperCase() }), timestamp(), colorize(), myFormat),
     level: minLevel
   })
+
+  if (onMongoError === null) {
+    onMongoError = () => true
+  }
 
   return winstonCreateLogger({
     exceptionHandlers: [new transports.Console()],

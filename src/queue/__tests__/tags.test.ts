@@ -57,6 +57,7 @@ describe('tags configuration testing', () => {
         "include": []
       }
     ]);
+    // @ts-ignore
     const immediateQueue = new Immediate(db, nconf, logger)
     const threads = immediateQueue.getThreadsByCriteria('test.com', [])
     expect(threads.length).toEqual(3)
@@ -89,15 +90,16 @@ describe('tags configuration testing', () => {
         "uid": "d078d1c8-cdb8-5b8e-ae11-f5a8b7b626f8"
       }
     ]);
+    // @ts-ignore
     const immediateQueue = new Immediate(db, nconf, logger)
     immediateQueue.bookThreadWithTags((quedJob: Job) => {
-      expect(quedJob.document.thread).toEqual("81232f13-1576-5abb-945c-c195a4c71896");
+      expect(quedJob.getDocument().thread).toEqual("81232f13-1576-5abb-945c-c195a4c71896");
     }, null)
     immediateQueue.bookThreadWithTags((quedJob: Job) => {
-      expect(quedJob.document.thread).toEqual("283d9a56-e9df-5aa7-9fc8-7a84d4d8f506");
+      expect(quedJob.getDocument().thread).toEqual("283d9a56-e9df-5aa7-9fc8-7a84d4d8f506");
     }, null)
     immediateQueue.bookThreadWithTags((quedJob: Job) => {
-      expect(quedJob.document.thread).toEqual("d078d1c8-cdb8-5b8e-ae11-f5a8b7b626f8");
+      expect(quedJob.getDocument().thread).toEqual("d078d1c8-cdb8-5b8e-ae11-f5a8b7b626f8");
     }, null)
   })
 
@@ -124,6 +126,7 @@ describe('tags configuration testing', () => {
         "include": []
       }
     ]);
+    // @ts-ignore
     const immediateQueue = new Immediate(db, nconf, logger)
     const indexes1 = immediateQueue.getThreadsByCriteria('moje-implementace2.mybrana.com', ["tag4"])
     const indexes2 = immediateQueue.getThreadsByCriteria('moje-implementace3.mybrana.com', ["tag3"])
@@ -158,6 +161,7 @@ describe('tags configuration testing', () => {
         "include": []
       }
     ]);
+    // @ts-ignore
     const immediateQueue = new Immediate(db, nconf, logger)
     const indexes1 = immediateQueue.getThreadsByCriteria('moje-implementace1.mybrana.com', ["tag1"])
     const indexes2 = immediateQueue.getThreadsByCriteria('moje-implementace2.mybrana.com', ["tag4"])

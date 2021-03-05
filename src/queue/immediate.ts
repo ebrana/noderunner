@@ -1,12 +1,15 @@
 import * as chance from 'chance'
 import isRunning = require('is-running')
+import { Db } from 'mongodb'
+import { Provider as Nconf } from 'nconf'
 import Job from '../job'
+import { Logger } from '../logger'
 import Queue from '../queue'
 
 interface IThread {
-  'callback': boolean,
-  'status': string,
-  'jobId': string,
+  'callback': boolean | null,
+  'status': string | null,
+  'jobId': string | null,
 }
 
 interface IConfiguration {
@@ -16,23 +19,25 @@ interface IConfiguration {
   'delete': boolean
 }
 
+type MyCallbackType = () => void
+
 export default class Immediate extends Queue {
-  private timeout: NodeJS.Timeout
+  private timeout: NodeJS.Timeout | null
   private running: boolean
-  private lastFinishedCallback: () => void
+  private lastFinishedCallback: MyCallbackType | null
   private lastCheckTime: number
   private isStuckJobsCheckPlanned: boolean
   private readonly threads: Map<string, IThread>
-  private readonly jobStats: { [id: string]: { finished?: number; started: number; thread: number } }
+  private readonly jobStats: { [id: string]: { finished?: number; started?: number | null; thread: number } }
   private configuration: IConfiguration[]
 
-  constructor(db, nconf, logger) {
+  constructor(db: Db, nconf: Nconf, logger: Logger) {
     super(db, nconf, logger)
 
     this.timeout = null
     this.running = false
     this.lastFinishedCallback = null
-    this.lastCheckTime = null
+    this.lastCheckTime = 0
     this.isStuckJobsCheckPlanned = false
     this.configuration = this.nconf.get('immediate:threads')
     this.threads = new Map()
@@ -50,18 +55,18 @@ export default class Immediate extends Queue {
     return new chance().guid()
   }
 
-  public addThread(key) {
+  public addThread(key: string | null): string {
     const randomGenerator = new chance()
-    key = key ? key : randomGenerator.guid()
-    this.threads.set(key, {
+    const newKey = key ?? randomGenerator.guid()
+    this.threads.set(newKey, {
       'callback': false,
       'jobId': '',
       'status': null,
     })
-    return key
+    return newKey
   }
 
-  public delThread(index) {
+  public delThread(index: number) {
     const key = Array.from(this.threads)[index][0]
     const thread = this.threads.get(key)
     if (thread && thread.status === null) {
@@ -91,17 +96,17 @@ export default class Immediate extends Queue {
   }
 
   public createJobStat(job: Job, threadIndex) {
-    const id = job.document._id.toHexString()
+    const id = job.getDocument()._id.toString()
     if (!this.jobStats[id]) {
       this.jobStats[id] = {
-        started: job.document.started,
+        started: job.getDocument().started,
         thread: threadIndex[1]
       }
     }
   }
 
   public updateJobStat(job: Job, threadIndex) {
-    const id = job.document._id.toHexString()
+    const id = job.getDocument()._id.toString()
     // job stat not found so it was already removed - create without started
     if (!this.jobStats[id]) {
       this.jobStats[id] = {
@@ -115,7 +120,7 @@ export default class Immediate extends Queue {
   public bookThreadByIndexes(indexes: number[]) {
     for (const item of indexes) {
       const key = Array.from(this.threads)[item][0]
-      if (this.threads.get(key).status === null) {
+      if (this.threads.get(key)?.status === null) {
         this.logger.silly('booked thread ' + item)
         this.threads.set(key, {
           callback: null,
@@ -230,8 +235,7 @@ export default class Immediate extends Queue {
               fallback(false, threadIndex)
             } else {
               // next job found in immediate queue
-              const job = new Job(this)
-              job.initByDocument(doc.value)
+              const job = new Job(this, doc.value)
               callback(job, threadIndex)
             }
           }
@@ -250,8 +254,10 @@ export default class Immediate extends Queue {
     this.lastFinishedCallback = callback
     this.logger.info('stopped')
     this.running = false
-    this.lastCheckTime = null
-    clearTimeout(this.timeout)
+    this.lastCheckTime = 0
+    if (this.timeout) {
+      clearTimeout(this.timeout)
+    }
   }
 
   public resetFinishedJobStats() {
@@ -266,20 +272,24 @@ export default class Immediate extends Queue {
 
   public rebookThread(threadIndex, jobId) {
     const thread = this.threads.get(threadIndex[0]);
-    thread.jobId = jobId;
-    this.threads.set(threadIndex[0], thread);
+    if (thread) {
+      thread.jobId = jobId;
+      this.threads.set(threadIndex[0], thread);
+    }
   }
 
   public releaseThread(index) {
     this.logger.silly('released thread ' + index[1] + '(' + index[0] + ')')
     const thread = this.threads.get(index[0])
-    if (thread && thread.callback === true) {
-      this.threads.delete(index[0])
-      this.delThreadeCallback(index)
-    } else {
-      this.logger.silly('released thread ' + index[1] + '(' + index[0] + ')')
-      thread.status = null
-      this.threads.set(index[0], thread)
+    if (thread) {
+      if (thread.callback === true) {
+        this.threads.delete(index[0])
+        this.delThreadeCallback(index)
+      } else {
+        this.logger.silly('released thread ' + index[1] + '(' + index[0] + ')')
+        thread.status = null
+        this.threads.set(index[0], thread)
+      }
     }
   }
 
@@ -289,8 +299,9 @@ export default class Immediate extends Queue {
 
   public getBookedThreadsCount(): number {
     let size = 0;
-    for (const thread in this.threads) {
-      if (this.threads.get(thread).status === 'booked') {
+    for (const index in this.threads) {
+      const thread = this.threads.get(index)
+      if (thread && thread.status === 'booked') {
         size++
       }
     }
@@ -407,7 +418,9 @@ export default class Immediate extends Queue {
   private _check() {
     this.lastCheckTime = Date.now()
 
-    clearTimeout(this.timeout)
+    if (this.timeout) {
+      clearTimeout(this.timeout)
+    }
 
     // if queue is already stopped, do nothing
     if (this.running === false) {
@@ -418,9 +431,9 @@ export default class Immediate extends Queue {
     }
 
     this.bookThreadWithTags((job: Job, threadIndex) => {
-        this.rebookThread(threadIndex, job.document._id)
+        this.rebookThread(threadIndex, job.getDocument()._id)
 
-        this.emit('jobFetched', job.document)
+        this.emit('jobFetched', job.getDocument())
         this.emit('waitingCountDecreased', 1)
 
         // job found - save stats and run immediately
@@ -431,7 +444,7 @@ export default class Immediate extends Queue {
 
             // job done - try fetch and run another immediately
             this.releaseThread(threadIndex)
-            this.emit('jobCompleted', job.document)
+            this.emit('jobCompleted', job.getDocument())
             this.emit('historyCountIncreased', 1)
 
             if (this.running === true) { // job completed but queue is stopped, not plann next check
@@ -441,14 +454,14 @@ export default class Immediate extends Queue {
           () => {
             // cannot save document, try wait for another round
             this.releaseThread(threadIndex)
-            this.emit('jobCompleted', job.document)
+            this.emit('jobCompleted', job.getDocument())
             this.emit('historyCountIncreased', 1)
 
             this.logger.error(
               'error during job run, sleep for ' +
               this.nconf.get('immediate:interval') / 1000 +
               ' secs',
-              job.document
+              job.getDocument()
             )
 
             // plan stuck jobs control after half hour - should be enough for mongo to be up again
@@ -463,7 +476,10 @@ export default class Immediate extends Queue {
               this.logger.warn('stucked jobs check already planned')
             }
 
-            clearTimeout(this.timeout)
+            if (this.timeout) {
+              clearTimeout(this.timeout)
+            }
+
             if (this.running === true) {
               this.timeout = setTimeout(() => {
                 this._check()
@@ -494,7 +510,9 @@ export default class Immediate extends Queue {
           )
         }
 
-        clearTimeout(this.timeout)
+        if (this.timeout) {
+          clearTimeout(this.timeout)
+        }
         this.timeout = setTimeout(() => {
           this._check()
         }, this.nconf.get('immediate:interval'))

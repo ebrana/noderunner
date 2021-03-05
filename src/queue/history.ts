@@ -3,7 +3,7 @@ import Job from '../job'
 import Queue from '../queue'
 
 export default class History extends Queue {
-  private timeout: NodeJS.Timeout
+  private timeout: NodeJS.Timeout | null
 
   constructor(db, nconf, logger) {
     super(db, nconf, logger)
@@ -27,8 +27,7 @@ export default class History extends Queue {
   public rerunJob(id, queue) {
     this.db.collection(queue).findOne({ _id: new ObjectID(id) }, (err, doc) => {
       if (doc != null) {
-        const job = new Job(this)
-        job.initByDocument(doc)
+        const job = new Job(this, doc)
         job.rerun()
       }
     })
@@ -54,10 +53,9 @@ export default class History extends Queue {
         if (typeof docs !== 'undefined' && docs && docs.length > 0) {
           this.logger.info('moving ' + docs.length + ' old jobs from immediate queue to history')
           docs.forEach(doc => {
-            const job = new Job(this)
-            job.initByDocument(doc)
+            const job = new Job(this, doc)
             job.moveToHistory()
-            this.logger.debug('moving job ' + job.document._id)
+            this.logger.debug('moving job ' + job.getDocument()._id)
           })
         } else {
           this.logger.verbose(
@@ -83,7 +81,9 @@ export default class History extends Queue {
 
   public stop() {
     this.logger.info('stopped')
-    clearTimeout(this.timeout)
+    if (this.timeout !== null) {
+      clearTimeout(this.timeout)
+    }
   }
 
   protected cleanFlush(hoursCount: number, statusFilter: any) {

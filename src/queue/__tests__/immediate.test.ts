@@ -28,12 +28,14 @@ beforeAll(() => {
 
 describe('planned queue', () => {
   it('add threade', () => {
+    // @ts-ignore
     const immediateQueue = new Immediate(db, nconf, logger)
     immediateQueue.addThread(null)
 
     expect(immediateQueue.getThreads().length).toEqual(4)
   })
   it('delete threade', () => {
+    // @ts-ignore
     const immediateQueue = new Immediate(db, nconf, logger)
     immediateQueue.delThread(0)
     expect(immediateQueue.getThreads().length).toEqual(2)

@@ -6,7 +6,7 @@ import Immediate from '../queue/immediate'
 import Planned from '../queue/planned'
 import { mockDateNow } from '../test'
 
-jest.mock('mongodb')
+jest.mock('mongodb');
 
 const findAndModify = jest.fn()
 const db = {
@@ -19,25 +19,31 @@ nconf.file({ file: 'defaults.json' })
 
 const logger = createLogger('error', 'TEST')
 const queue = new Planned(null, nconf, logger)
+// @ts-ignore
 const immediateQueue = new Immediate(db, nconf, logger)
 
-const jobWithStarSchedule = new Job(queue)
-jobWithStarSchedule.initByDocument({
+// id.id = '5f61d86725e34d7a8ba9ca9a'
+const jobWithStarSchedule = new Job(queue, {
   _id: '5f61d86725e34d7a8ba9ca9a',
-  schedule: '*/30 * * * *'
+  command: '',
+  schedule: '*/30 * * * *',
+  status: '',
+  thread: ''
 })
 
-const jobWithRegularSchedule = new Job(queue)
-jobWithRegularSchedule.initByDocument({
+const jobWithRegularSchedule = new Job(queue, {
   _id: '5f61d86725e34d7a8ba9ca9b',
-  schedule: '30 * * * *'
+  command: '',
+  schedule: '30 * * * *',
+  status: '',
+  thread: ''
 })
 
-const jobForRunTest = new Job(immediateQueue)
-jobForRunTest.initByDocument({
+const jobForRunTest = new Job(immediateQueue, {
   _id: '5f61d86725e34d7a8ba9ca9b',
   command: 'sleep 10',
-  job: 'sleep 10',
+  // job: 'sleep 10',
+  status: '',
   thread: 'aaa-bbb'
 })
 

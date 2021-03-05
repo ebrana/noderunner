@@ -8,48 +8,47 @@ import Immediate from './queue/immediate'
 interface IThreadStat {
   total: number
   byThread: number[]
-  intervalFrom?: number
-  intervalTo?: number
+  intervalFrom: number
+  intervalTo: number
 }
 
 export default class Watchdog extends EventEmitter {
   private db: Db
   private nconf: Nconf
   private logger: Logger
-  private interval: NodeJS.Timeout
-  private intervalThreadeStats: NodeJS.Timeout
+  private interval: NodeJS.Timeout | null
+  private intervalThreadeStats: NodeJS.Timeout | null
   private immediateQueue: Immediate
-  private badSamplesLimit: number
+  private readonly badSamplesLimit: number
   private badSamplesCount: number
   private lastSample: number
   private lastLoadCalculation: number
   private emailSent: boolean
-  private emailResetInterval: NodeJS.Timeout
+  private emailResetInterval: NodeJS.Timeout | null
   private email2Sent: boolean
   private running: boolean
 
-  constructor(db, nconf, logger) {
+  constructor(db: Db, nconf: Nconf, logger: Logger, immediateQueue: Immediate) {
     super()
 
     this.db = db
     this.nconf = nconf
     this.logger = logger
+    this.intervalThreadeStats = null
     this.interval = null
-    this.immediateQueue = null
-
+    this.immediateQueue = immediateQueue
+    this.running = false
     this.badSamplesLimit = nconf.get('watchdog:badSamplesLimit')
     this.badSamplesCount = 0
-    this.lastSample = null
-
+    this.lastSample = 0
     this.lastLoadCalculation = Date.now() / 1000
-
     this.emailSent = false
     this.emailResetInterval = null
     this.email2Sent = false
   }
 
-  public run(immediateQueue) {
-    this.immediateQueue = immediateQueue
+  public run() {
+    this.running = true
 
     // check repeatedly congestion and last immediate check time
     this.interval = setInterval(() => {
@@ -84,9 +83,15 @@ export default class Watchdog extends EventEmitter {
   public stop() {
     this.logger.info('stopped')
     this.running = false
-    clearInterval(this.interval)
-    clearInterval(this.intervalThreadeStats)
-    clearInterval(this.emailResetInterval)
+    if (this.interval) {
+      clearInterval(this.interval)
+    }
+    if (this.intervalThreadeStats) {
+      clearInterval(this.intervalThreadeStats)
+    }
+    if (this.emailResetInterval) {
+      clearInterval(this.emailResetInterval)
+    }
   }
 
   private runCongestionCheck() {
@@ -100,7 +105,7 @@ export default class Watchdog extends EventEmitter {
       },
       (err, count) => {
         // actual count bigger than the last one - increment counter
-        if (count > this.lastSample && this.lastSample !== null) {
+        if (count > this.lastSample) {
           this.badSamplesCount++
         } else if (count < this.lastSample) {
           this.badSamplesCount = 0
@@ -141,7 +146,7 @@ export default class Watchdog extends EventEmitter {
       }
     )
 
-    if (this.immediateQueue.getLastCheckTime() !== null) { // check immediate is running
+    if (this.immediateQueue.getLastCheckTime() > 0) { // check immediate is running
       // check last immediate check time
       const sinceLastCheck = Date.now() - this.immediateQueue.getLastCheckTime()
       this.logger.debug('last immediate queue check time ' + sinceLastCheck + 'ms ago')
@@ -256,6 +261,8 @@ export default class Watchdog extends EventEmitter {
     this.immediateQueue.resetFinishedJobStats()
     return {
       byThread,
+      intervalFrom,
+      intervalTo,
       total
     }
   }

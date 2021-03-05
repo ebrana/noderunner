@@ -1,5 +1,5 @@
 import { Validator } from 'jsonschema'
-import { MongoClient, MongoClientOptions } from 'mongodb'
+import { Db, MongoClient, MongoClientOptions } from 'mongodb'
 import * as nconf from 'nconf'
 import threadsSettingSchema = require("../threadsSettingSchema.json");
 import Gui from './gui'
@@ -22,11 +22,16 @@ if (nconf.get('jwt:self-signed')) {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 }
 
-let immediate, planned, history, watchdog, gui, mongoTimeout
+let immediate: ImmediateQueue
+let planned: PlannedQueue
+let history: HistoryQueue
+let watchdog: Watchdog
+let gui: Gui
+let mongoTimeout: NodeJS.Timeout | null
 
 // Prepare logger instance
 const MIN_LOG_LEVEL = nconf.get('logLevel')
-const createLoggerForNamespace = namespace =>
+const createLoggerForNamespace = (namespace: string) =>
   createLogger(MIN_LOG_LEVEL, namespace, () => onMongoFailure())
 const logger = createLoggerForNamespace('index')
 
@@ -91,21 +96,21 @@ function onMongoFailure() {
   }
 }
 
-function restart(db = null) {
+function restart(db: Db | null = null) {
   planned.stop()
   history.stop()
   watchdog.stop()
   immediate.stop(null, false)
-  if (db === null) {
-    tryMongoConnection()
-  } else {
+  if (db !== null) {
     db.close(() => {
       tryMongoConnection()
     })
+  } else {
+    tryMongoConnection()
   }
 }
 
-function reload(db) {
+function reload(db: Db) {
   nconf.save(() => {
     logger.info('restart in progress')
     restart(db)
@@ -125,7 +130,9 @@ function tryMongoConnection() {
     (err, db) => {
       if (err) {
         logger.error('Mongo connection error, try in 10 secs. ' + JSON.stringify(err))
-        clearTimeout(mongoTimeout)
+        if (mongoTimeout) {
+          clearTimeout(mongoTimeout)
+        }
         mongoTimeout = setTimeout(tryMongoConnection, 3000)
       } else {
         logger.info('connected to Mongo')
@@ -133,7 +140,7 @@ function tryMongoConnection() {
         immediate = new ImmediateQueue(db, nconf, immediateLogger).run()
         planned = new PlannedQueue(db, nconf, plannedLogger).run()
         history = new HistoryQueue(db, nconf, historyLogger).run()
-        watchdog = new Watchdog(db, nconf, watchdogLogger).run(immediate)
+        watchdog = new Watchdog(db, nconf, watchdogLogger, immediate).run()
         if (nconf.get('gui:enable')) {
           gui = new Gui(
             db,

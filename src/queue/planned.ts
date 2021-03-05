@@ -4,12 +4,13 @@ import Job from '../job'
 import Queue from '../queue'
 
 export default class Planned extends Queue {
-  private timeout: NodeJS.Timeout
+  private timeout: NodeJS.Timeout | null
   private lastCheckTime: number
 
   constructor(db, nconf, logger) {
     super(db, nconf, logger)
     this.timeout = null
+    this.lastCheckTime = 0
   }
 
   public insertJob(document, callback, fallback) {
@@ -116,9 +117,7 @@ export default class Planned extends Queue {
             const checkIntervalEnd = (this.lastCheckTime = Date.now())
 
             docs.forEach(doc => {
-              const job = new Job(this)
-              job.initByDocument(doc)
-
+              const job = new Job(this, doc)
               if (
                 job.isDue(
                   Math.floor(checkIntervalStart / 1000),
@@ -137,7 +136,7 @@ export default class Planned extends Queue {
                             ' skipped due to concurrence mode (same job already running)'
                         )
                       } else {
-                        this.logger.debug('moving job ' + job.document._id /*job.toString()*/)
+                        this.logger.debug('moving job ' + job.getDocument()._id /*job.toString()*/)
                         job.copyToImmediate(() => {
                           this.emit('waitingCountIncreased', 1)
                         })
@@ -156,7 +155,7 @@ export default class Planned extends Queue {
                     )
                   case 'allow':
                   default:
-                    this.logger.debug('moving job ' + job.document._id /*job.toString()*/)
+                    this.logger.debug('moving job ' + job.getDocument()._id /*job.toString()*/)
                     dueJobsCount++
                     job.copyToImmediate(() => {
                       this.emit('waitingCountIncreased', 1)
@@ -192,6 +191,8 @@ export default class Planned extends Queue {
 
   public stop() {
     this.logger.info('stopped')
-    clearTimeout(this.timeout)
+    if (this.timeout) {
+      clearTimeout(this.timeout)
+    }
   }
 }

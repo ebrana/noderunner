@@ -15,6 +15,8 @@ interface IQueues {
   history: History
 }
 
+type MyCallbackType = () => void
+
 export default class Gui {
   public db: string
   public nconf: nconf.Provider
@@ -34,7 +36,7 @@ export default class Gui {
   }, 3000)
 
   private readonly restartCalback: CallableFunction
-  private authorizator: Identity
+  private readonly authorizator: Identity | null
 
   constructor(db, nconfig, logger, queues, watchdog, schemaValidator, restartCalback) {
     this.db = db
@@ -44,9 +46,7 @@ export default class Gui {
     this.watchdog = watchdog
     this.restartCalback = restartCalback;
     this.schemaValidator = schemaValidator;
-    if (nconf.get('jwt:enable')) {
-      this.authorizator = new Identity(nconf)
-    }
+    this.authorizator = nconf.get('jwt:enable') ? new Identity(nconf) : null
   }
 
   public run() {
@@ -90,13 +90,15 @@ export default class Gui {
       if (nconf.get('jwt:enable')) {
 
         socket.on('login', (record) => {
-          this.authorizator.login(record.email, record.password, (token, errorCode, errorMessage) => {
-            if (token) {
-              this.emit(socket, 'loginSuccess', { 'token': token, 'username': record.email })
-            } else {
-              this.emit(socket, 'loginError', { 'code': errorCode, 'message': errorMessage })
-            }
-          })
+          if (this.authorizator) {
+            this.authorizator.login(record.email, record.password, (token, errorCode, errorMessage) => {
+              if (token) {
+                this.emit(socket, 'loginSuccess', { 'token': token, 'username': record.email })
+              } else {
+                this.emit(socket, 'loginError', { 'code': errorCode, 'message': errorMessage })
+              }
+            })
+          }
         })
 
         socket.on('delCommand', (record) => {
@@ -231,13 +233,15 @@ export default class Gui {
         })
 
         socket.on('refreshToken', (record) => {
-          this.authorizator.refresh(record.token, (token, errorCode, errorMessage) => {
-            if (token) {
-              this.emit(socket, 'refreshTokenSuccess', { 'token': token })
-            } else {
-              this.emit(socket, 'refreshTokenError', { 'code': errorCode, 'message': errorMessage })
-            }
-          })
+          if (this.authorizator) {
+            this.authorizator.refresh(record.token, (token, errorCode, errorMessage) => {
+              if (token) {
+                this.emit(socket, 'refreshTokenSuccess', { 'token': token })
+              } else {
+                this.emit(socket, 'refreshTokenError', { 'code': errorCode, 'message': errorMessage })
+              }
+            })
+          }
         })
 
         socket.on('updateThreadSetting', (record) => {
@@ -457,15 +461,17 @@ export default class Gui {
     socket.emit(action, params)
   }
 
-  public stop(callback: () => void) {
+  public stop(callback: MyCallbackType | null = null) {
     this.io.close(() => {
       this.logger.info('stopped')
-      callback()
+      if (callback) {
+        callback()
+      }
     })
   }
 
   private isAllowed(token: string): boolean {
-    return nconf.get('jwt:enable') && this.authorizator.isValidate(token)
+    return this.authorizator !== null && this.authorizator.isValidate(token)
   }
 
   private _initSocket() {
@@ -479,7 +485,7 @@ export default class Gui {
   private permissionDenied(record, socket) {
     this.logger.error('permission denied')
     try {
-      if (nconf.get('jwt:enable')) {
+      if (this.authorizator) {
         this.authorizator.validate(record.token)
       }
       this.emit(socket, 'permissionDenied', 'permission denied')

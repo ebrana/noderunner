@@ -8,12 +8,12 @@ import Queue from './queue'
 import Immediate from './queue/immediate'
 
 export interface IDocument {
-  _id: ObjectID
+  _id: ObjectID | string
   status: string
   command: string
   nice?: number
   schedule?: string
-  thread?: number
+  thread: string
   sourceId?: ObjectID
   added?: number
   output?: string
@@ -21,27 +21,37 @@ export interface IDocument {
   started?: number
 }
 
-export default class Job {
-  public document: IDocument
+interface INextRuntime {
+  offset: number,
+  nextWithOffset: number,
+  nextWithoutOffset: number
+}
 
+export default class Job {
+  private document: IDocument
   private db: Db
   private nconf: Nconf
   private logger: Logger
   private queue: Queue
-  private threadName: string
-  private threadIndex: number
+  private readonly threadName: string
+  private readonly threadIndex: string
 
-  constructor(queue: Queue) {
+  constructor(queue: Queue, doc: IDocument) {
     this.db = queue.db
     this.nconf = queue.nconf
     this.logger = queue.logger
     this.queue = queue
+    this.document = doc
+    this.threadName = this._buildThreadName(this.document.thread)
+    this.threadIndex = this.document.thread
+  }
+
+  public getDocument(): IDocument {
+    return this.document
   }
 
   public run(callback, fallback, onStatusSaved) {
     const command = this._buildCommandArray()
-    this.threadName = this._buildThreadName(this.document.thread)
-    this.threadIndex = this.document.thread
 
     this.logger.info(
       'THREAD ' +
@@ -105,14 +115,16 @@ export default class Job {
   }
 
   // parameters and all calculations are in seconds
-  public isDue(checkIntervalStart, checkIntervalEnd) {
-    const { nextWithOffset, nextWithoutOffset, offset } = this.getNextRunTime()
+  public isDue(checkIntervalStart, checkIntervalEnd): boolean {
+    const schedule = this.document.schedule;
+    if (schedule) {
+      const { nextWithOffset, nextWithoutOffset, offset } = this.getNextRunTime()
 
-    if (checkIntervalStart < nextWithOffset) {
-      if (nextWithOffset <= checkIntervalEnd) {
-        // inside of interval
-        this.logger.debug(
-          '✓ job ' +
+      if (checkIntervalStart < nextWithOffset) {
+        if (nextWithOffset <= checkIntervalEnd) {
+          // inside of interval
+          this.logger.debug(
+            '✓ job ' +
             this.document._id +
             ' with next due time ' +
             time(nextWithoutOffset) +
@@ -127,11 +139,11 @@ export default class Job {
             ']..' +
             time(checkIntervalEnd) +
             '>'
-        )
-      } else {
-        // after interval
-        this.logger.debug(
-          '✗ job ' +
+          )
+        } else {
+          // after interval
+          this.logger.debug(
+            '✗ job ' +
             this.document._id +
             ' with next due time ' +
             time(nextWithoutOffset) +
@@ -148,12 +160,12 @@ export default class Job {
             's  [' +
             time(nextWithOffset) +
             ']'
-        )
-      }
-    } else {
-      // before interval
-      this.logger.debug(
-        '✗ job ' +
+          )
+        }
+      } else {
+        // before interval
+        this.logger.debug(
+          '✗ job ' +
           this.document._id +
           ' with next due time ' +
           time(nextWithoutOffset) +
@@ -170,39 +182,46 @@ export default class Job {
           '..' +
           time(checkIntervalEnd) +
           '>'
-      )
+        )
+      }
+
+      return checkIntervalStart < nextWithOffset && nextWithOffset <= checkIntervalEnd
     }
 
-    return checkIntervalStart < nextWithOffset && nextWithOffset <= checkIntervalEnd
+    return false
   }
 
-  public getNextRunTime() {
-    // load distribution algorithm - for example when using */10 * * * * schedule, every job should run in any minute in interval 0..9 (but every job every time with the same offset - derieved from its ID)
-    let offset
-    const parsedSchedule = /\*\/(\d*)( \*){4}/.exec(this.document.schedule)
-    if (parsedSchedule && parsedSchedule[1]) {
-      const minutesInterval = parseInt(parsedSchedule[1], 10)
+  public getNextRunTime(): INextRuntime {
+    // load distribution algorithm - for example when using */10 * * * * schedule,
+    // every job should run in any minute in interval 0..9 (but every job every time with the same offset - derieved from its ID)
+    const schedule = this.document.schedule
+    if (schedule) {
+      let offset: number = 0
+      const parsedSchedule = /\*\/(\d*)( \*){4}/.exec(schedule)
+      if (parsedSchedule && parsedSchedule[1]) {
+        const minutesInterval = parseInt(parsedSchedule[1], 10)
 
-      // find random number derived from job id in interval (0..minutesInterval)
-      const randomGenerator = new chance(this.document._id.toString())
-      offset = Math.round(
-        randomGenerator.integer({ min: 0, max: (minutesInterval - 1) * 100 }) * 0.6
-      )
-    } else {
-      offset = 0
+        // find random number derived from job id in interval (0..minutesInterval)
+        const randomGenerator = new chance(this.document._id.toString())
+        offset = Math.round(
+          randomGenerator.integer({ min: 0, max: (minutesInterval - 1) * 100 }) * 0.6
+        )
+      }
+
+      // next() returns next due time, so we need to move time back by one check interval to get current due time
+      const now = new Date(Date.now())
+      const next = parser
+        .parseExpression(schedule, {
+          currentDate: now.valueOf() - this.nconf.get('planned:interval')
+        })
+        .next()
+      const nextWithoutOffset = Math.floor(next.getTime() / 1000)
+      const nextWithOffset = nextWithoutOffset - offset
+
+      return { nextWithOffset, nextWithoutOffset, offset }
     }
 
-    // next() returns next due time, so we need to move time back by one check interval to get current due time
-    const now = new Date(Date.now())
-    const next = parser
-      .parseExpression(this.document.schedule, {
-        currentDate: now.valueOf() - this.nconf.get('planned:interval')
-      })
-      .next()
-    const nextWithoutOffset = Math.floor(next.getTime() / 1000)
-    const nextWithOffset = nextWithoutOffset - offset
-
-    return { nextWithOffset, nextWithoutOffset, offset }
+    return { offset: 0, nextWithOffset: 0, nextWithoutOffset: 0 }
   }
 
   public copyToImmediate(callback) {
@@ -261,10 +280,6 @@ export default class Job {
       })
   }
 
-  public initByDocument(doc) {
-    this.document = doc
-  }
-
   public toString() {
     return this.document._id + ' ' + this._buildCommand()
   }
@@ -310,7 +325,7 @@ export default class Job {
     this._save(data)
   }
 
-  private _save(data, callback?: (doc: any) => void, fallback?: (err: Error) => void) {
+  private _save(data, callback: (doc: any) => void = ()=> { return; }, fallback: (err: Error) => void = ()=> { return; }) {
     this.db
       .collection('immediate')
       // @ts-ignore
@@ -322,13 +337,9 @@ export default class Job {
             err,
             doc !== null ? doc.value : ''
           )
-          if (typeof fallback !== 'undefined') {
-            fallback(err)
-          }
+          fallback(err)
         } else {
-          if (typeof callback !== 'undefined') {
-            callback(doc.value)
-          }
+          callback(doc.value)
         }
       })
   }
@@ -337,7 +348,7 @@ export default class Job {
     return this._buildCommand(true)
   }
 
-  private _buildCommand(returnAsArray = false) {
+  private _buildCommand(returnAsArray: boolean = false) {
     let args =
       this.nconf.get('sudo:user') && this.nconf.get('sudo:user').length > 0
         ? ['sudo', '-u', this.nconf.get('sudo:user'), '-g', this.nconf.get('sudo:group')]
@@ -350,15 +361,15 @@ export default class Job {
 
     const exe = args.shift()
 
-    if (typeof returnAsArray === 'undefined' || !returnAsArray) {
+    if (!returnAsArray) {
       return exe + ' ' + args.join(' ')
     } else {
       return [exe, args]
     }
   }
 
-  private _buildThreadName(threadIndex: number) {
-    let name = '#' + (threadIndex + 1)
+  private _buildThreadName(threadIndex: string) {
+    let name = '#' + threadIndex
 
     const threadNames = this.nconf.get('debug:threadNames')
     if (threadNames) {
