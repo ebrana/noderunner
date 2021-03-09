@@ -1,7 +1,7 @@
 [Unit]
 Description=Daemon for running Noderunner
-StartLimitBurst=5
-StartLimitIntervalSec=150
+#StartLimitBurst=5 #fix for newest version systemd
+#StartLimitIntervalSec=150 #fix for newest version systemd
 
 [Service]
 ExecStart=/usr/bin/n use 10.16.2 built/index.js
@@ -10,6 +10,8 @@ WorkingDirectory=/home/noderunner
 # try to restart service 5 times with 20s delay, then fail
 Restart=always
 RestartSec=20
+StartLimitBurst=5
+StartLimitInterval=150
 
 Environment=ENV=production
 User=nginx
