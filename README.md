@@ -11,25 +11,18 @@ Daemon is composed by four separate modules. Three of them are corresponding to 
   * ``Watchdog`` module is continuously checking count of jobs in ``immediate`` queue with ``status=planned``. If certain value (set in config) of consecutive samples exceeds limit, warning email is sent and info is pushed to log.
 
 ## Installation
+Systemd required n manager (https://github.com/tj/n) and installed node 10.16.2.
 ```bashp
-git clone https://github.com/dvorakjan/noderunner.git /home/noderunner
+git clone https://github.com/ebrana/noderunner.git /home/noderunner
 cd /home/noderunner
 npm install
+npm run-script build
 
 # Systemd
 cp /home/noderunner/bin/noderunner.service /etc/systemd/system/noderunner.service
 systemctl daemon-reload
 systemctl enable noderunner
 systemctl start noderunner
-
-# SysVInit
-npm install -g forever
-cp /home/noderunner/bin/initScript.sh /etc/init.d/noderunner
-chmod +x /etc/init.d/noderunner
-# modify NR_* variables in /etc/init.d/noderunner
-# mkdir "NR_LOGS" when "NR_USER" can't write to NR_LOGS/..
-update-rc.d noderunner defaults # Ubuntu
-chkconfig --add noderunner      # CentOS
 ```
 ## Debugging
   * During development, runs noderunner using ``nodemon`` for automatic reloading based on filechange.
