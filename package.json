@@ -19,6 +19,7 @@
     "@types/mongodb": "^2.2.23",
     "@types/nconf": "0.0.37",
     "@types/node": "^10.12.11",
+    "body-parser": "^1.19.0",
     "chance": "^1.0.4",
     "cron-parser": "^2.16.3",
     "express": "^4.17.1",

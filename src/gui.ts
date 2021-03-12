@@ -1,7 +1,8 @@
 import { Validator } from 'jsonschema'
 import { debounce } from 'lodash'
-import * as nconf from 'nconf'
-import threadsSettingSchema = require("../threadsSettingSchema.json");
+import { Db } from 'mongodb'
+import { Provider as Nconf } from 'nconf'
+import threadsSettingSchema = require("../threadsSettingSchema.json")
 import Identity from './identity'
 import { Logger } from './logger'
 import History from './queue/history'
@@ -18,8 +19,8 @@ interface IQueues {
 type MyCallbackType = () => void
 
 export default class Gui {
-  public db: string
-  public nconf: nconf.Provider
+  public db: Db
+  public nconf: Nconf
   public logger: Logger
   public queues: IQueues
   public watchdog: Watchdog
@@ -38,7 +39,7 @@ export default class Gui {
   private readonly restartCalback: CallableFunction
   private readonly authorizator: Identity | null
 
-  constructor(db, nconfig, logger, queues, watchdog, schemaValidator, restartCalback) {
+  constructor(db: Db, nconfig: Nconf, logger: Logger, queues, watchdog, schemaValidator, restartCalback) {
     this.db = db
     this.nconf = nconfig
     this.logger = logger
@@ -46,7 +47,7 @@ export default class Gui {
     this.watchdog = watchdog
     this.restartCalback = restartCalback;
     this.schemaValidator = schemaValidator;
-    this.authorizator = nconf.get('jwt:enable') ? new Identity(nconf) : null
+    this.authorizator = nconfig.get('jwt:enable') ? new Identity(nconfig) : null
   }
 
   public run() {
@@ -73,7 +74,7 @@ export default class Gui {
       })
 
       this.emit(socket, 'threadsCount', this.queues.immediate.getThreads().length)
-      this.emit(socket, 'threadsSettings', nconf.get('immediate:threads'))
+      this.emit(socket, 'threadsSettings', this.nconf.get('immediate:threads'))
 
       this.queues.history.getJobsCount(cnt => {
         this.emit(socket, 'historyCount', cnt)
@@ -87,7 +88,7 @@ export default class Gui {
         this.emit(socket, 'plannedCount', cnt)
       })
 
-      if (nconf.get('jwt:enable')) {
+      if (this.nconf.get('jwt:enable')) {
 
         socket.on('login', (record) => {
           if (this.authorizator) {
@@ -193,8 +194,8 @@ export default class Gui {
 
         socket.on('addThread', (record) => {
           if (this.isAllowed(record.token)) {
-            const threads = nconf.get('immediate:threads')
-            if (nconf.get('immediate:maxThreadsCount') === threads.length) {
+            const threads = this.nconf.get('immediate:threads')
+            if (this.nconf.get('immediate:maxThreadsCount') === threads.length) {
               this.logger.error('threads limit reached')
               this.emit(socket, 'settingSavedFalse', 'Threads limit reached.')
             } else {
@@ -221,7 +222,7 @@ export default class Gui {
 
         socket.on('delThread', (record) => {
           if (this.isAllowed(record.token)) {
-            const threads = nconf.get('immediate:threads')
+            const threads = this.nconf.get('immediate:threads')
             threads[record.index].delete = true;
             this.nconf.save(() => {
               this.emitToAll('settingSaved', { 'threads': threads, 'invalidateChart': false })
@@ -246,7 +247,7 @@ export default class Gui {
 
         socket.on('updateThreadSetting', (record) => {
           if (this.isAllowed(record.token)) {
-            const threads = nconf.get('immediate:threads')
+            const threads = this.nconf.get('immediate:threads')
             if (threads[record.id].delete === undefined) { // ukladame nastaveni jen pro vlakna, ktera nejsou oznacena pro mazani
               const uid = threads[record.id].uid
               threads[record.id] = record.setting
@@ -257,7 +258,7 @@ export default class Gui {
                 this.logger.error('schema is not valid')
                 this.emit(socket, 'settingSavedFalse', null)
               } else {
-                nconf.set('immediate:threads', threads)
+                this.nconf.set('immediate:threads', threads)
                 this.nconf.save(() => {
                   this.logger.info('update setting on thread #' + record.id + ' success')
                   this.emitToAll('settingSaved', { 'threads': threads, 'invalidateChart': false })
@@ -476,9 +477,28 @@ export default class Gui {
 
   private _initSocket() {
     const express = require('express')
+    const bodyParser = require('body-parser')
     const app = express()
     const listener = app.listen(8001)
     app.use('/', express.static('public'))
+    app.post('/queue/:queue', bodyParser.json(), (req, res) => {
+      if (['::1', '127.0.0.1'].includes(req.ip)) {
+        this.db
+          .collection(req.params.queue)
+          .insertOne(req.body)
+          .then(() => {
+            res.end()
+          })
+          .catch(() => {
+            res.statusCode = 500
+            res.end()
+          })
+      } else {
+        res.statusCode = 401
+        res.end()
+      }
+    })
+
     return require('socket.io')(listener)
   }
 
