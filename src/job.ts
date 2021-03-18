@@ -74,7 +74,7 @@ export default class Job {
 
         const spawn = require('child_process').spawn
         try {
-          const child = spawn(command[0], command[1].join(' '))
+          const child = spawn(command[0], command[1])
 
           this._save({
             pid: child.pid
