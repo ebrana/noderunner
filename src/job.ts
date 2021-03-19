@@ -1,3 +1,4 @@
+import * as split from 'argv-split'
 import * as chance from 'chance'
 import * as parser from 'cron-parser'
 import * as _ from 'lodash'
@@ -355,9 +356,7 @@ export default class Job {
         : []
 
     args = args.concat(this._hasProperty('nice') ? ['nice', '-n', this.document.nice] : [])
-
-    // if we had command property, use it instead of deprecated interpreter, basepath, executable, args
-    args = args.concat(this.document.command.split(' '))
+    args = args.concat(split(this.document.command))
 
     const exe = args.shift()
 
