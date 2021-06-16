@@ -408,7 +408,10 @@ export default class Gui {
     }
 
     if (typeof filter.duration !== 'undefined' && filter.duration !== null && filter.duration !== '') {
-      filter.duration = new RegExp(filter.duration.trim())
+      filter.$expr = {
+        $gte: [{ $subtract: ['$finished', '$started'] }, parseFloat(filter.duration)]
+      }
+      delete filter.duration
     } else if (typeof filter.duration !== 'undefined') {
       delete filter.duration
     }
