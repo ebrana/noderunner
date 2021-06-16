@@ -260,7 +260,7 @@ export default class Job {
       })
   }
 
-  public rerun() {
+  public rerun(callback) {
     const newDocument = this.document
 
     delete newDocument._id
@@ -275,9 +275,11 @@ export default class Job {
       .then(() => {
         this.logger.debug('rerun DONE')
         this.queue.emit('rerunDone', { oldDocument: this.document, newDocument })
+        callback(true)
       })
       .catch(error => {
         this.logger.error(error.message, error)
+        callback(false)
       })
   }
 

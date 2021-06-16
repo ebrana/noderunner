@@ -284,7 +284,13 @@ export default class Gui {
       socket.on('rerun', params => {
         this.logger.verbose('rerun event detected', params)
         this.emitToAll('waitingCountIncreased', 1)
-        this.queues.history.rerunJob(params.id, params.queue)
+        this.queues.history.rerunJob(params.id, params.queue, (result) => {
+          if (result === true) {
+            this.emit(socket, 'commandSuccess', 'Success rerun.')
+          } else {
+            this.emit(socket, 'commandError', 'Please set command and host.')
+          }
+        })
       })
     })
 

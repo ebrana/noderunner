@@ -24,11 +24,13 @@ export default class History extends Queue {
       })
   }
 
-  public rerunJob(id, queue) {
+  public rerunJob(id, queue, callback) {
     this.db.collection(queue).findOne({ _id: new ObjectID(id) }, (err, doc) => {
       if (doc != null) {
         const job = new Job(this, doc)
-        job.rerun()
+        job.rerun(callback)
+      } else {
+        callback(false)
       }
     })
   }
